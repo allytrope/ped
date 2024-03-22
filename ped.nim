@@ -12,13 +12,13 @@ let doc = """
 For extracting data from pedigree file.
 
 Usage:
-  ped relatives <file> <proband> [--degree <int>]
+  ped relatives <file> <proband> [--degree <int>, -O <output_type>]
 
 Options:
   -h, --help                                 Show this screen.
   -d <int>, --degree <int>                   Filter relatives by number of minimum (parent-child) connections away,
                                              a.k.a, the shortest-path distance.
-
+  -O <output_type>                           Can be "l" for list or "t" for TSV.     
 Subcommands:
   relatives  Find relatives.
 """
@@ -38,4 +38,9 @@ if args["<proband>"]:
   if args["--degree"]:
     let degree = to_int(parse_float($args["--degree"]))
     let relatives = relatives_by_degree(proband, degree)
-    write_list(relatives)
+
+    # Determine output type
+    if $args["-O"] == "l":
+      write_list(relatives)
+    else:
+      write_tsv(relatives)

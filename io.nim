@@ -1,5 +1,5 @@
 import
-  std/[algorithm, options, sequtils, sets, strutils],
+  std/[algorithm, options, sequtils, sets, strformat, strutils],
   relatives
 
 proc read_csv*(file: string): HashSet[Individual] =
@@ -8,6 +8,8 @@ proc read_csv*(file: string): HashSet[Individual] =
   var f = open(file, fmRead)
   defer: close(f)
   for line in lines(f):
+    if line.startsWith("#"):
+      continue
     let split = line.split("\t")
     let id = split[0]
     let sire = split[1]
@@ -75,16 +77,45 @@ proc write_list*(individuals: HashSet[Individual]) =
   let sequence = individuals.toSeq().sorted(cmp=cmpIndividuals)
 
   for indiv in sequence:
+    echo indiv.id
+
+proc write_tsv*(individuals: HashSet[Individual]) =
+  #[Write individuals to TSV.]#
+
+  # Print only proband if it is the only relative.
+  if len(individuals) == 1:
+    for indiv in individuals:
+      echo &"{indiv.id}\t\t"
+    return
+
+  let sequence = individuals.toSeq().sorted(cmp=cmpIndividuals)
+  var included_individuals: HashSet[Individual]
+
+  for indiv in sequence:
     var 
       sire_id: string
       dam_id: string
     if indiv.sire.isSome():
-      sire_id = indiv.sire.get().id
+      if indiv.sire.get() notin sequence:
+        sire_id = ""
+      else:
+        sire_id = indiv.sire.get().id
+        included_individuals.incl(indiv.sire.get())
     else:
       sire_id = ""
     if indiv.dam.isSome():
-      dam_id = indiv.dam.get().id
+      if indiv.dam.get() notin sequence:
+        dam_id = ""
+      else:
+        dam_id = indiv.dam.get().id
+        included_individuals.incl(indiv.dam.get())
     else:
       dam_id = ""
-    #echo &"{indiv.id}\t{sire_id}\t{dam_id}"
-    echo indiv.id
+
+    # Remove if parents are lot collected and is already listed as a parent of another
+    if sire_id == "" and dam_id == "":
+      discard
+    else:
+      echo &"{indiv.id}\t{sire_id}\t{dam_id}"
+      included_individuals.incl(indiv)
+    #echo indiv.id
