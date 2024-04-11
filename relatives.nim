@@ -3,11 +3,14 @@
 import std/[hashes, options, sets, strformat, tables]
 
 type
+  Sex* = enum
+    male, female, unknown
   Individual* = ref object
     id*: string
     sire*: Option[Individual]
     dam*: Option[Individual]
     children*: HashSet[Individual]
+    sex*: Sex
   Edge = ref object
     child, parent: Individual
 

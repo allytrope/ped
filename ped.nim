@@ -18,7 +18,7 @@ Options:
   -h, --help                                 Show this screen.
   -d <int>, --degree <int>                   Filter relatives by number of minimum (parent-child) connections away,
                                              a.k.a, the shortest-path distance.
-  -O <output_type>                           Can be "l" for list or "t" for TSV.     
+  -O <output_type>                           Can be "l" for list, "t" for 3-columned TSV, or "p" for PLINK-style TSV     
 Subcommands:
   relatives  Find relatives.
 """
@@ -29,18 +29,27 @@ try:
 except DocoptExit:
   quit "Error parsing."
 
-var individuals: HashSet[Individual]
-individuals = read_csv($args["<file>"])
+var
+  degree: int
+  individuals: HashSet[Individual]
+  subset: HashSet[Individual]
+
+individuals = read_tsv($args["<file>"])
 
 if args["<proband>"]:
   let proband = individuals[Individual(id: $args["<proband>"])]
 
   if args["--degree"]:
-    let degree = to_int(parse_float($args["--degree"]))
-    let relatives = relatives_by_degree(proband, degree)
+    degree = to_int(parse_float($args["--degree"]))
+    subset = relatives_by_degree(proband, degree)
 
-    # Determine output type
-    if $args["-O"] == "l":
-      write_list(relatives)
-    else:
-      write_tsv(relatives)
+# Determine output type
+case $args["-O"]:
+  of "l":
+    write_list(subset)
+  of "p":
+    write_plink(subset)
+  of "t":
+    write_tsv(subset)
+  else:
+    write_tsv(subset)
