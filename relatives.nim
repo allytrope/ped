@@ -40,7 +40,7 @@ func parents(proband: Individual): HashSet[Individual] =
   return parents
 
 #   # Find descendants
-proc relatives_by_degree*(proband: Individual, degree: int): HashSet[Individual] =
+proc relatives_by_degree*(probands: seq[Individual], degree: int): HashSet[Individual] =
   #[Find all relatives within a specified degree of relationship.
   
   Finds relatives with a shortest path less than or equal to `degree` in graph G,
@@ -82,6 +82,7 @@ proc relatives_by_degree*(proband: Individual, degree: int): HashSet[Individual]
         depth_first_search(child, degree - 1)
   
   # Begin iterations
-  depth_first_search(proband, degree)
+  for proband in probands:
+    depth_first_search(proband, degree)
 
   return relatives

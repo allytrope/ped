@@ -3,16 +3,25 @@
 ## Usage
 ```
 # Filter pedigree to only include individuals at most distance 4 from individual "123"
-ped relatives pedigree.tsv 123 -d 4
+ped pedigree.tsv -p 111 -d 4
+
+# Specify multiple probands as a comma-delimited string
+ped pedigree.tsv -p 111,222,333 -d 4
 ```
+
+`ped` will by default return an error if a proband is not in the pedigree. To process anyway, include the flag `--force-probands`. This can be succinctly written as so:
+```
+ped pedigree.tsv -fp 111,222,333 -d 4
+```
+
 
 `ped` can be conveniently combined for use with other tools like so:
 ```
 # Count how many individuals are related to proband (including proband itself)
-ped relatives pedigree.tsv 123 -d 4 -Ol | wc -l
+ped pedigree.tsv -p 111 -d 4 -Ol | wc -l
 
 # Extract only related samples from VCF file
-bcftools view input.vcf -s $(echo $(ped relatives pedigree.tsv 123 -d 4 -Ol) | sed 's/ /,/g') --force-samples
+bcftools view input.vcf -s $(echo $(ped pedigree.tsv -p 111 -d 4 -Ol) | sed 's/ /,/g') --force-samples
 ```
 
 ## Input
