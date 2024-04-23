@@ -2,7 +2,7 @@
 
 ## Usage
 ```
-# Filter pedigree to only include individuals at most distance 4 from individual "123"
+# Filter pedigree to only include individuals at most distance 4 from individual "111"
 ped pedigree.tsv -p 111 -d 4
 
 # Specify multiple probands as a comma-delimited string
@@ -20,8 +20,8 @@ ped pedigree.tsv -fp 111,222,333 -d 4
 # Count how many individuals are related to proband (including proband itself)
 ped pedigree.tsv -p 111 -d 4 -Ol | wc -l
 
-# Extract only related samples from VCF file
-bcftools view input.vcf -s $(echo $(ped pedigree.tsv -p 111 -d 4 -Ol) | sed 's/ /,/g') --force-samples
+# Extract only related samples from BCF file
+bcftools view input.bcf -S <(ped pedigree.tsv -p 111 -d 4 -Ol) --force-samples
 ```
 
 ## Input
@@ -29,13 +29,13 @@ The input pedigree file should be a tab-delimited file, consisting of three colu
 Any rows starting with `#` are skipped.
 
 ## Output
-There are three options for output. They are specified with the `-O` option as summarized below:
+There are three output types, all passed to `stdout`. They are specified with the `-O` option as summarized below:
 
 | Option + arg | Output Type | Description |
 | --- | --- | --- |
-| `-O l` | list | One individual per line. |
-| `-O p` | PLINK | Plink-style `.ped`.|
-| `-O t` | TSV | Child, sire, and dam with tab-delimited columns. |
+| `-Ol` | list | One individual per line. |
+| `-Op` | PLINK | Plink-style `.ped`. |
+| `-Ot` | TSV | Child, sire, and dam with tab-delimited columns. |
 
 If not specified, the default is the TSV output, which is the same format as the input file.
 In this case, each line will be a duo or trio, unless the proband is the only relative (when `-d 0`).

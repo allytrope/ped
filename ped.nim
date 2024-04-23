@@ -12,7 +12,7 @@ let doc = """
 For extracting data from pedigree file.
 
 Usage:
-  ped <file> [options]
+  ped <file> [((-p <probands> | -P <file>) -d <int>)] [options]
 
 Options:
   -h, --help                                 Show this screen.
@@ -21,6 +21,7 @@ Options:
   -f, --force-probands                       No error if proband is missing from pedigree.
   -O <output_type>                           Can be "l" for list, "t" for 3-columned TSV, or "p" for PLINK-style TSV.
   -p <probands>, --probands <probands>       The probands from which relatives are determined.
+  -P <file>, --probands-file <file>          File containing one proband per line.
 """
 
 var args: Table[string, Value]
@@ -29,35 +30,36 @@ try:
 except DocoptExit:
   quit "ERROR: Error parsing."
 
-var
-  degree: int
-  individuals: HashSet[Individual]
-  subset: HashSet[Individual]
+# Read input file
+var individuals = read_tsv($args["<file>"])  # Can't be var, but why?
 
-individuals = read_tsv($args["<file>"])
-
+# Get probands as strings
+var proband_strings: seq[string]
 if args["--probands"]:
-  if not args["--degree"]:
-    quit "ERROR: Must specify '--degree <int>' when using '--probands <probands>'."
+  proband_strings = ($args["--probands"]).split(",")
+elif args["--probands-file"]:
+  # TODO: Improve on reading file
+  proband_strings = readFile($args["--probands-file"]).split("\n")[0..^2]  # Skips last terminating line.
 
-  var
-    proband: Individual
-    probands: seq[Individual]
-  for indiv in ($args["--probands"]).split(","):
-    try:
-      proband = individuals[Individual(id: indiv)]
-      probands.add(proband)
-    except KeyError:
-      if args["--force-probands"]:
-        continue
-      else:
-        quit fmt"ERROR: {indiv} not in pedigree."
-  degree = to_int(parse_float($args["--degree"]))
-  subset = relatives_by_degree(probands, degree)
-else:
-  if args["--degree"]:
-    quit "ERROR: Must specify '--probands <indiv>' when using '--degree <int>'."
-  subset = individuals
+# Find corresponding proband objects
+var
+  proband: Individual
+  probands: seq[Individual]
+for indiv in proband_strings:
+  try:
+    proband = individuals[Individual(id: indiv)]
+    probands.add(proband)
+  except KeyError:
+    if args["--force-probands"]:
+      continue
+    else:
+      quit fmt"ERROR: {indiv} not in pedigree."
+
+# Find relatives
+var subset: HashSet[Individual]
+if args["--degree"]:
+    let degree = to_int(parse_float($args["--degree"]))
+    subset = relatives_by_degree(probands, degree)
 
 # Determine output type
 case $args["-O"]:
