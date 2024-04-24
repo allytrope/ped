@@ -2,13 +2,11 @@ import
   std/[algorithm, options, sequtils, sets, strformat, strutils],
   relatives
 
-proc read_tsv*(file: string): HashSet[Individual] =
+proc read_tsv*(file: File): HashSet[Individual] =
   #[Read from 3-columned TSV, where the columns are in the order child, sire, and dam.]#
   var individuals: HashSet[Individual]
 
-  var f = open(file, fmRead)
-  defer: close(f)
-  for line in lines(f):
+  for line in lines(file):
     if line.startsWith("#"):
       continue
     let split = line.split("\t")
@@ -87,6 +85,24 @@ proc write_list*(individuals: HashSet[Individual]) =
 
   for indiv in sequence:
     echo indiv.id
+
+# proc write_matrix*(individuals: HashSet[Individual]) =
+#   #[Write a matrix of relationship coefficients.]#
+#   let sequence = individuals.toSeq().sorted(cmp=cmpIndividuals)
+
+#   type
+#     Cell = object
+#       indiv1: Individual
+#       indiv2: Individual
+#       val: float
+
+#   var cells: seq[Cell]
+#   #var matrix: seq[individuals.len(), seq[individuals.len(), float]]
+
+#   for individual in individuals:
+
+
+
 
 proc write_plink*(individuals: HashSet[Individual]) =
   #[Write individuals to PLINK-style TSV.

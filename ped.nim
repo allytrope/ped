@@ -3,16 +3,13 @@ import
   std/[hashes, tables, sets, strformat, strutils, terminal],
   io, relatives
 
-# Check for stdin
-if not isatty(stdin):
-  # TODO: Allow for passing pedigree file through stdin
-  raise newException(IOError, "Passing though stdin is not implemented.")
 
 let doc = """
 For extracting data from pedigree file.
 
 Usage:
   ped <file> [((-p <probands> | -P <file>) -d <int>)] [options]
+  ped [((-p <probands> | -P <file>) -d <int>)] [options]
 
 Options:
   -h, --help                                 Show this screen.
@@ -31,7 +28,18 @@ except DocoptExit:
   quit "ERROR: Error parsing."
 
 # Read input file
-var individuals = read_tsv($args["<file>"])  # Can't be var, but why?
+var individuals: HashSet[Individual]
+if args["<file>"]:
+  # Verify that there is no stdin
+  if not isatty(stdin):
+    raise newException(IOError, "Can't pass pedigree file through both positional argument and stdin.")
+  let f = open($args["<file>"], fmRead)
+  defer: close(f)
+  individuals = read_tsv(f)
+elif not isatty(stdin):
+  individuals = read_tsv(stdin)
+else:
+  raise newException(IOError, "Must pass pedigree file as either positional argument or through stdin.")
 
 # Get probands as strings
 var proband_strings: seq[string]

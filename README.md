@@ -25,7 +25,7 @@ bcftools view input.bcf -S <(ped pedigree.tsv -p 111 -d 4 -Ol) --force-samples
 ```
 
 ## Input
-The input pedigree file should be a tab-delimited file, consisting of three columns in the order: child, sire, and dam.
+The input pedigree file should be a tab-delimited file, consisting of three columns in the order: child, sire, and dam. Can be specified as a positional argument or through `stdin`.
 Any rows starting with `#` are skipped.
 
 ## Output
