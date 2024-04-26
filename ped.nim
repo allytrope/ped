@@ -16,9 +16,9 @@ Options:
   -d <int>, --degree <int>                   Filter relatives by number of minimum (parent-child) connections away,
                                              a.k.a, the shortest-path distance.
   -f, --force-probands                       No error if proband is missing from pedigree.
-  -O <output_type>                           Can be "l" for list, "t" for 3-columned TSV, or "p" for PLINK-style TSV.
-  -p <probands>, --probands <probands>       The probands from which relatives are determined.
+  -O <format>                                Can be "l" for list, "t" for 3-columned TSV, or "p" for PLINK-style TSV.
   -P <file>, --probands-file <file>          File containing one proband per line.
+  -p <probands>, --probands <probands>       The probands from which relatives are determined.
 """
 
 var args: Table[string, Value]
@@ -30,9 +30,10 @@ except DocoptExit:
 # Read input file
 var individuals: HashSet[Individual]
 if args["<file>"]:
-  # Verify that there is no stdin
-  if not isatty(stdin):
-    raise newException(IOError, "Can't pass pedigree file through both positional argument and stdin.")
+  # This IOError is being raised unnecessarily during process substitution
+  # # Verify that there is no stdin
+  # if not isatty(stdin):
+  #   raise newException(IOError, "Can't pass pedigree file through both positional argument and stdin.")
   let f = open($args["<file>"], fmRead)
   defer: close(f)
   individuals = read_tsv(f)
@@ -68,6 +69,8 @@ var subset: HashSet[Individual]
 if args["--degree"]:
     let degree = to_int(parse_float($args["--degree"]))
     subset = relatives_by_degree(probands, degree)
+else:
+  subset = individuals
 
 # Determine output type
 case $args["-O"]:
