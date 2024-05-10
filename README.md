@@ -32,10 +32,10 @@ bcftools view input.bcf -S <(ped pedigree.tsv -p 111 -d 4 -Ol) --force-samples
 
 ## Input pedigree
 The input pedigree file should be a tab-delimited file, consisting of three columns in the order: child, sire, and dam. Can be specified as a positional argument or through `stdin`.
-Any rows not starting with `#` are interpreted as individuals, so any header or column names should start with `#` or be left out.
+Any rows not starting with `#` are interpreted as individuals, so any header or column names should start with `#` or be excluded.
 
 ## Probands
-Probands can be specified for filtering individuals with the corresponding `-d <int>` option.
+Probands are the individuals from whom relatives will be determined using the filtering methods. Only one of the following options for specifying probands can be used. Using one will also require either `-d <int>` or `-r <float>`.
 
 ### `-P <probands_file>`
 A file containing a list of probands, one per line.
@@ -44,9 +44,33 @@ Does not need to be seekable, and so can also take a file through process substi
 ### `-p <probands>`
 A comma-delimited string of probands like so `-p 111,222,333`.
 
-## Filtering methods
+## Filtering
+Filtering options explain how to filter down a individuals in relation to proband(s). Thus using any of these require either `-P <probands_file>` or `-p <probands>`.
+
 ### `-d <int>`
-Currently, the only filtering option is by filtering on relatives with a shortest path of *n* or less on a tree with parent-child edges. This is the shortest, or geodesic, path. This is specified with the option `-d <int>` or in long form `--degree <int>`. This option requires either `-P <probands_file>` or `-p <probands>`.
+This option filters on relatives with a shortest path of *n* or less on a tree with parent-child edges. This is the shortest, or geodesic, path. This is specified with the option `-d <int>` or in long form `--degree <int>`.
+
+Some example coefficients:
+| Coefficient | Relatives |
+| --- | --- |
+| `0` | Self |
+| `1` | Parents, children |
+| `2` | Grandparents, grandchildren, siblings |
+| ... | ... |
+
+### `-r <float>`
+This option keeps only relatives with a coefficient of relationship greater than or equal to the specified float. While `-d <int>` keeps only the shorest path to determine degree, `-r <float>` sums the coefficients of all paths.
+
+Some example coefficients:
+| Coefficient | Relatives |
+| --- | --- |
+| `1` | Self |
+| `0.5` | Parents, children, full-siblings |
+| `0.25` | Grandparents, grandchildren, half-siblings, aunt/uncle, niece/nephew, double cousin | 
+| ... | ... |
+| `0` | All blood relatives (not necessarily all in pedigree) |
+
+While a cousin would have a coefficient of `0.125`, a double cousin (being a counsin on both parents' sides) would have the coefficient applied twice and thus be `0.25`.
 
 
 ## Output
@@ -59,7 +83,7 @@ There are three output types, all passed to `stdout`. They are specified with th
 | `-Ot` | TSV | Child, sire, and dam with tab-delimited columns. |
 
 If not specified, the default is the TSV output, which is the same format as the input file.
-In this case, each line will be a duo or trio, unless the proband is the only relative (when `-d 0`).
+In this case, each line will be a duo or trio, unless the proband is the only relative.
 
 ### `-Ol`
 The simplest output; just one individual per row.

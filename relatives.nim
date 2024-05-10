@@ -39,12 +39,14 @@ func parents(proband: Individual): HashSet[Individual] =
       parents.incl(proband.dam.get())
   return parents
 
-#   # Find descendants
+# Find descendants
 proc relatives_by_degree*(probands: seq[Individual], degree: int): HashSet[Individual] =
   #[Find all relatives within a specified degree of relationship.
   
   Finds relatives with a shortest path less than or equal to `degree` in graph G,
-  where edges connect between parent and child.]#
+  where edges connect between parent and child. For example, from a proband,
+  it's parent and child are degree 1, while it's grandparent, grandchild,
+  and sibling are degree 2.]#
   var relatives: HashSet[Individual]
   var visited_edges: Table[Edge, int]
 
@@ -84,5 +86,63 @@ proc relatives_by_degree*(probands: seq[Individual], degree: int): HashSet[Indiv
   # Begin iterations
   for proband in probands:
     depth_first_search(proband, degree)
+
+  return relatives
+
+proc relatives_by_relationship*(probands: seq[Individual], min_coefficient: float): HashSet[Individual] =
+  #[Find all relatives within a specified coefficient of relationship.
+  
+  Finds relatives based on the estimated genetic similarity. For example, from a proband,
+  it's parent, child, and sibling are 0.5, while it's grandparent, grandchild,
+  and sibling are 0.25. This does not take into account identical siblings.]#
+
+  var coefficients: Table[Individual, float]
+
+  proc descendant_coefficients(indiv: Individual, path: seq[Individual], coefficient: float) =
+    #[The recursion keeps track of the coefficient of relationship based on how far away from proband.
+    Each time a path to an individual is found, that path's coefficient is added to the coefficient for that indiviual.]#
+
+    for child in indiv.children:
+      if child notin path:
+        if child notin coefficients:
+          # Set initial coefficient to 0
+          coefficients[child] = 0
+        var extended_path = path
+        extended_path.add(child)
+        # Add path's coefficient
+        coefficients[child] += coefficient
+        descendant_coefficients(child, extended_path, coefficient / 2)
+
+  proc relative_coefficients(indiv: Individual, path: seq[Individual], coefficient: float) =
+    #[Traverse up the tree, calling proc descendant_coefficients in the process.]#
+    var extended_path = path
+    extended_path.add(indiv)
+    if indiv notin coefficients:
+      coefficients[indiv] = 0
+    coefficients[indiv] += coefficient
+    
+    # Offspring
+    descendant_coefficients(indiv, extended_path, coefficient / 2)
+
+    # Sire
+    if indiv.sire.isSome():
+      relative_coefficients(indiv.sire.get(), extended_path, coefficient / 2)
+
+    # Dam
+    if indiv.dam.isSome():
+      relative_coefficients(indiv.dam.get(), extended_path, coefficient / 2)
+
+  var relatives: HashSet[Individual]
+  # Iterate through probands
+  for proband in probands:
+
+    # Set proband to coefficient of 1 and then populate with coefficients of the remaining individuals
+    coefficients = {proband: 1.0}.toTable
+    relative_coefficients(proband, @[], 1.0)
+
+    # Filter to only relatives at or above the minimum coefficient
+    for indiv, coefficient in coefficients:
+      if coefficient >= min_coefficient:
+        relatives.incl(indiv)
 
   return relatives

@@ -8,17 +8,18 @@ let doc = """
 For extracting data from pedigree file.
 
 Usage:
-  ped <file> [((-p <probands> | -P <file>) -d <int>)] [options]
+  ped <file> [((-p <probands> | -P <file>) (-d <int> | -r <float> ))] [options]
   ped [((-p <probands> | -P <file>) -d <int>)] [options]
 
 Options:
-  -h, --help                                 Show this screen.
-  -d <int>, --degree <int>                   Filter relatives by number of minimum (parent-child) connections away,
-                                             a.k.a, the shortest-path distance.
-  -f, --force-probands                       No error if proband is missing from pedigree.
-  -O <format>                                Can be "l" for list, "t" for 3-columned TSV, or "p" for PLINK-style TSV.
-  -P <file>, --probands-file <file>          File containing one proband per line.
-  -p <probands>, --probands <probands>       The probands from which relatives are determined.
+  -h, --help                                      Show this screen.
+  -d <int>, --degree <int>                        Filter relatives by number of minimum (parent-child) connections away,
+                                                  a.k.a, the shortest-path distance.
+  -f, --force-probands                            No error if proband is missing from pedigree.
+  -O <format>                                     Can be "l" for list, "t" for 3-columned TSV, or "p" for PLINK-style TSV.
+  -P <file>, --probands-file <file>               File containing one proband per line.
+  -p <probands>, --probands <probands>            The probands from which relatives are determined.
+  -r <float>, --relationship-coefficient <float>  Filter relatives by minium coefficient of relationship.
 """
 
 var args: Table[string, Value]
@@ -64,11 +65,14 @@ for indiv in proband_strings:
     else:
       quit fmt"ERROR: {indiv} not in pedigree."
 
-# Find relatives
+# Find relatives by filtering method
 var subset: HashSet[Individual]
 if args["--degree"]:
     let degree = to_int(parse_float($args["--degree"]))
     subset = relatives_by_degree(probands, degree)
+elif args["--relationship-coefficient"]:
+    let coefficient = parse_float($args["--relationship-coefficient"])
+    subset = relatives_by_relationship(probands, coefficient)
 else:
   subset = individuals
 
