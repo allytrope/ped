@@ -16,7 +16,8 @@ Options:
   -d <int>, --degree <int>                        Filter relatives by number of minimum (parent-child) connections away,
                                                   a.k.a, the shortest-path distance.
   -f, --force-probands                            No error if proband is missing from pedigree.
-  -O <format>                                     Can be "l" for list, "t" for 3-columned TSV, or "p" for PLINK-style TSV.
+  -O <format>                                     Can be "l" for list, "m" for matrix, "p" for PLINK-style TSV,
+                                                  "t" for 3-columned TSV, or "w" for pairwise.
   -P <file>, --probands-file <file>               File containing one proband per line.
   -p <probands>, --probands <probands>            The probands from which relatives are determined.
   -r <float>, --relationship-coefficient <float>  Filter relatives by minium coefficient of relationship.
@@ -72,7 +73,7 @@ if args["--degree"]:
     subset = relatives_by_degree(probands, degree)
 elif args["--relationship-coefficient"]:
     let coefficient = parse_float($args["--relationship-coefficient"])
-    subset = relatives_by_relationship(probands, coefficient)
+    subset = filter_relatives(probands, coefficient)
 else:
   subset = individuals
 
@@ -80,9 +81,13 @@ else:
 case $args["-O"]:
   of "l":
     write_list(subset)
+  of "m":
+    write_matrix(subset)
   of "p":
     write_plink(subset)
   of "t":
     write_tsv(subset)
+  of "w":
+    write_pairwise(subset)
   else:
     write_tsv(subset)

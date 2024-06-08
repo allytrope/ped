@@ -1,5 +1,5 @@
 import
-  std/[algorithm, options, sequtils, sets, strformat, strutils],
+  std/[algorithm, options, sequtils, sets, strformat, strutils, sugar, tables],
   relatives
 
 proc read_tsv*(file: File): HashSet[Individual] =
@@ -187,3 +187,37 @@ proc write_tsv*(individuals: HashSet[Individual]) =
     else:
       echo &"{indiv.id}\t{sire_id}\t{dam_id}"
       included_individuals.incl(indiv)
+
+proc write_matrix*(individuals: HashSet[Individual]) =
+  #[Write relationship coefficients as a matrix.]#
+  let sorted_individuals = individuals.toSeq().sorted(cmp=cmpIndividuals)
+
+  # Write header row
+  let header = sorted_individuals.map(indiv => indiv.id).join("\t")
+  echo &"\t{header}"
+
+  for indiv in sorted_individuals:
+    var coefficients = find_coefficients(indiv)
+
+    # Fill in all missing pairs
+    for indiv2 in sorted_individuals:
+      try:
+        discard coefficients[indiv2]
+      except KeyError:
+        # Report value as 0
+        coefficients[indiv2] = 0
+    let row = sorted_individuals.map(indiv => coefficients[indiv]).join("\t")
+    echo &"{indiv.id}\t{row}"
+
+proc write_pairwise*(individuals: HashSet[Individual]) =
+  #[Write relationship coefficients as a pairwise TSV.]#
+  let sorted_individuals = individuals.toSeq().sorted(cmp=cmpIndividuals)
+  for indiv in sorted_individuals:
+    var coefficients = find_coefficients(indiv)
+    for indiv2 in sorted_individuals:
+      try:
+        echo &"{indiv.id}\t{indiv2.id}\t{coefficients[indiv2]}"
+      except KeyError:
+        # Report value as 0
+        echo &"{indiv.id}\t{indiv2.id}\t0"
+        

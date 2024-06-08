@@ -89,14 +89,16 @@ proc relatives_by_degree*(probands: seq[Individual], degree: int): HashSet[Indiv
 
   return relatives
 
-proc relatives_by_relationship*(probands: seq[Individual], min_coefficient: float): HashSet[Individual] =
+proc relatives_by_relationship*(proband: Individual, min_coefficient: float): OrderedTable[Individual, float] =
   #[Find all relatives within a specified coefficient of relationship.
   
   Finds relatives based on the estimated genetic similarity. For example, from a proband,
   it's parent, child, and sibling are 0.5, while it's grandparent, grandchild,
   and sibling are 0.25. This does not take into account identical siblings.]#
 
-  var coefficients: Table[Individual, float]
+  #var coefficients: Table[Individual, float]
+  var coefficients: OrderedTable[Individual, float]
+  #var coefficients = newTable[Individual, float]
 
   proc descendant_coefficients(indiv: Individual, path: seq[Individual], coefficient: float) =
     #[The recursion keeps track of the coefficient of relationship based on how far away from proband.
@@ -132,17 +134,28 @@ proc relatives_by_relationship*(probands: seq[Individual], min_coefficient: floa
     if indiv.dam.isSome():
       relative_coefficients(indiv.dam.get(), extended_path, coefficient / 2)
 
-  var relatives: HashSet[Individual]
+  #var relatives: HashSet[Individual]
   # Iterate through probands
-  for proband in probands:
+  #for proband in probands:
 
-    # Set proband to coefficient of 1 and then populate with coefficients of the remaining individuals
-    coefficients = {proband: 1.0}.toTable
-    relative_coefficients(proband, @[], 1.0)
+  # Set proband to coefficient of 1 and then populate with coefficients of the remaining individuals
+  coefficients = {proband: 1.0}.toOrderedTable
+  relative_coefficients(proband, @[], 1.0)
 
-    # Filter to only relatives at or above the minimum coefficient
-    for indiv, coefficient in coefficients:
-      if coefficient >= min_coefficient:
-        relatives.incl(indiv)
+  # Set proband back to 1 (to reset modification)
+  coefficients[proband] = 1
 
-  return relatives
+  return coefficients
+
+proc filter_relatives*(probands: seq[Individual], min_coefficient: float): HashSet[Individual] =
+    #[Filter to only relatives at or above the minimum coefficient.]#
+    var relatives: HashSet[Individual]
+    for proband in probands:
+      let coefficients = relatives_by_relationship(proband, min_coefficient)
+      for indiv, coefficient in coefficients:
+        if coefficient >= min_coefficient:
+          relatives.incl(indiv)
+    return relatives
+
+proc find_coefficients*(proband: Individual): OrderedTable[Individual, float] =
+  return relatives_by_relationship(proband, 0)

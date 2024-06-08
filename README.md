@@ -24,7 +24,7 @@ Additional uses can be found by combining with other tools:
 ped pedigree.tsv -p 111 -d 4 -Ol | wc -l
 
 # Find individuals that are not closely related to proband
-ped pedigree.tsv -Ol | grep -Fvxf <(ped pedigree.tsv -p 30009 -d 4 -Ol)
+ped pedigree.tsv -Ol | grep -Fvxf <(ped pedigree.tsv -p 111 -d 4 -Ol)
 
 # Extract only related samples from BCF file
 bcftools view input.bcf -S <(ped pedigree.tsv -p 111 -d 4 -Ol) --force-samples
@@ -50,8 +50,8 @@ Filtering options explain how to filter down a individuals in relation to proban
 ### `-d <int>`
 This option filters on relatives with a shortest path of *n* or less on a tree with parent-child edges. This is the shortest, or geodesic, path. This is specified with the option `-d <int>` or in long form `--degree <int>`.
 
-Some example coefficients:
-| Coefficient | Relatives |
+Some example values:
+| Value | Relatives |
 | --- | --- |
 | `0` | Self |
 | `1` | Parents, children |
@@ -79,11 +79,17 @@ There are three output types, all passed to `stdout`. They are specified with th
 | Option + arg | Output Type | Description |
 | --- | --- | --- |
 | `-Ol` | list | One individual per line. |
+| `-Om` | matrix | Coefficients of relationship as a matrix. |
 | `-Op` | PLINK | Plink-style `.ped`. |
 | `-Ot` | TSV | Child, sire, and dam with tab-delimited columns. |
+| `-Ow` | pairwise | Coefficients of relationship as a pairwise TSV. |
 
 If not specified, the default is the TSV output, which is the same format as the input file.
 In this case, each line will be a duo or trio, unless the proband is the only relative.
+
+### `-Om`
+*n* x *n* matrix of coefficients of relationship values. First row and first column list the individual ids.
+Includes identity of 1.0 along the diagonal.
 
 ### `-Ol`
 The simplest output; just one individual per row.
@@ -98,6 +104,10 @@ The sex field uses `1` for males and `2` for females.
 ### `-Ot`
 Lists duos and trios as a TSV. Also condenses rows so that if an individual has no recorded parent, but is the parent of another, it will not have its own row. This means that there will usually be fewer rows than total individuals.
 Fields with missing parents are left blank.
+
+### `-Ow`
+Lists individuals pairwise with their corresponding coefficients of relationship.
+Includes rows for comparing individuals to themselves (which will always be 1.0).
 
 ## Installation
 The binary can be downloaded from the [release page](https://github.com/allytrope/ped/releases). No dependencies are required this way. 
