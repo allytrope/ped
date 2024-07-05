@@ -8,11 +8,13 @@ let doc = """
 For extracting data from pedigree file.
 
 Usage:
-  ped <file> [((-p <probands> | -P <file>) (-d <int> | -r <float> ))] [options]
-  ped [((-p <probands> | -P <file>) -d <int>)] [options]
+  ped <file> [options]
+  ped [options]
 
 Options:
   -h, --help                                      Show this screen.
+  -a, --ancestors                                 Keep only probands and ancestors (invalid to -a).
+  -b, --descendants                               Keep only probands and descendents.         
   -d <int>, --degree <int>                        Filter relatives by number of minimum (parent-child) connections away,
                                                   a.k.a, the shortest-path distance.
   -f, --force-probands                            No error if proband is missing from pedigree.
@@ -28,6 +30,14 @@ try:
   args = docopt(doc)
 except DocoptExit:
   quit "ERROR: Error parsing."
+
+# Validate some options
+if args["--ancestors"] and args["--descendants"]:
+  raise newException(Exception, "`-a` and `-b` are mutally exclusive.")
+if args["--probands"] and args["--probands-file"]:
+  raise newException(Exception, "`-p` and `-P` are mutally exclusive.")
+if args["--force-probands"] and not (args["--probands"] or args["--probands-file"]):
+  raise newException(Exception, "`-f` requires either `-p` or `-P`.")
 
 # Read input file
 var individuals: HashSet[Individual]
@@ -76,6 +86,18 @@ elif args["--relationship-coefficient"]:
     subset = filter_relatives(probands, coefficient)
 else:
   subset = individuals
+
+# Optionally restrict to only ancestors or descendants (including proband(s))
+if args["--ancestors"]:
+  var combined_ancestors: HashSet[Individual]
+  for proband in probands:
+    combined_ancestors.incl(proband.ancestors())
+  subset = subset.intersection(combined_ancestors)
+if args["--descendants"]:
+  var combined_descendants: HashSet[Individual]
+  for proband in probands:
+    combined_descendants.incl(proband.descendants())
+  subset = subset.intersection(combined_descendants)
 
 # Determine output type
 case $args["-O"]:

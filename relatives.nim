@@ -39,6 +39,36 @@ func parents(proband: Individual): HashSet[Individual] =
       parents.incl(proband.dam.get())
   return parents
 
+proc ancestors*(proband: Individual): HashSet[Individual] =
+  #[Find all ancestors including self.]#
+  var individuals = [proband].toHashSet()
+  #var individuals: HashSet[Individual]
+
+  proc recursive_ancestors(proband: Individual): HashSet[Individual] =
+    if proband.sire.isSome():
+      individuals.incl(proband.sire.get())
+      discard recursive_ancestors(proband.sire.get())
+    if proband.dam.isSome():
+      individuals.incl(proband.dam.get())
+      discard recursive_ancestors(proband.dam.get())
+  
+  discard recursive_ancestors(proband)
+  return individuals
+
+proc descendants*(proband: Individual): HashSet[Individual] =
+  #[Find all descendants including self.]#
+  var individuals = [proband].toHashSet()
+  #var individuals: HashSet[Individual]
+  proc recursive_descendants(proband: Individual): HashSet[Individual] =
+    for child in proband.children:
+      individuals.incl(child)
+      discard recursive_descendants(child)
+  
+  discard recursive_descendants(proband)
+  return individuals
+
+  
+
 # Find descendants
 proc relatives_by_degree*(probands: seq[Individual], degree: int): HashSet[Individual] =
   #[Find all relatives within a specified degree of relationship.
