@@ -25,6 +25,7 @@
 | `-a` | `--ancestors` | Ancestors only + self. |
 | `-b` | `--descendants` | Descendants only + self. |
 | `-d <int>` | `--degree <int>` | Maximum degree of relationship. |
+| `-m` | `--mates` | Keep mates. |
 | `-r <float>` | `--relationship-coefficient <float>` | Minimum coefficient of relationship. |
 
 ### Output Options
@@ -100,7 +101,6 @@ These two flags cannot be used together.
 
 #### `-d <int>`
 This option filters on relatives with a shortest path of *n* or less on a tree with parent-child edges. This is the shortest, or geodesic, path. This is specified with the option `-d <int>` or in long form `--degree <int>`.
-`-d <int>` is incompatible with `-r <float>`.
 
 Some example values:
 | Value | Relatives |
@@ -110,9 +110,12 @@ Some example values:
 | `2` | Grandparents, grandchildren, siblings |
 | ... | ... |
 
+#### `-m`
+This flag will include mates of individuals in the subset that might have otherwise been filtered out. This step occurs after all other filtering.
+This option is useful for when using output to generate a plot.
+
 #### `-r <float>`
 This option keeps only relatives with a coefficient of relationship greater than or equal to the specified float. While `-d <int>` keeps only the shorest path to determine degree, `-r <float>` sums the coefficients of all paths.
-`-r <float>` is incompatible with `-d <int>`.
 
 Some example coefficients:
 | Coefficient | Relatives |
@@ -126,15 +129,7 @@ Some example coefficients:
 While a cousin would have a coefficient of `0.125`, a double cousin (being a counsin on both parents' sides) would have the coefficient applied twice and thus be `0.25`.
 
 ### Output
-There are three output types, all passed to `stdout`. They are specified with the `-O` option as summarized below:
-
-| Option + arg | Output Type | Description |
-| --- | --- | --- |
-| `-Ol` | list | One individual per line. |
-| `-Om` | matrix | Coefficients of relationship as a matrix. |
-| `-Op` | PLINK | Plink-style `.ped`. |
-| `-Ot` | TSV | Child, sire, and dam with tab-delimited columns. |
-| `-Ow` | pairwise | Coefficients of relationship as a pairwise TSV. |
+There are three output types, all passed to `STDOUT`. They are specified with the `-O` option as summarized below.
 
 If not specified, the default is the TSV output, which is the same format as the input file.
 In this case, each line will be a duo or trio, unless the proband is the only relative.

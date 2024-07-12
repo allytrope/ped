@@ -1,6 +1,6 @@
 import
   docopt,
-  std/[hashes, tables, sets, strformat, strutils, terminal],
+  std/[hashes, options, sets, strformat, strutils, tables, terminal],
   io, relatives
 
 
@@ -13,16 +13,17 @@ Usage:
 
 Options:
   -h, --help                                      Show this screen.
-  -a, --ancestors                                 Keep only probands and ancestors (invalid to -a).
-  -b, --descendants                               Keep only probands and descendents.         
+  -a, --ancestors                                 Keep only probands and ancestors (not compatible with -b).
+  -b, --descendants                               Keep only probands and descendents (not compatible with -a).         
   -d <int>, --degree <int>                        Filter relatives by number of minimum (parent-child) connections away,
                                                   a.k.a, the shortest-path distance.
   -f, --force-probands                            No error if proband is missing from pedigree.
+  -m, --mates                                     Include mates.
   -O <format>                                     Can be "l" for list, "m" for matrix, "p" for PLINK-style TSV,
                                                   "t" for 3-columned TSV, or "w" for pairwise.
   -P <file>, --probands-file <file>               File containing one proband per line.
   -p <probands>, --probands <probands>            The probands from which relatives are determined.
-  -r <float>, --relationship-coefficient <float>  Filter relatives by minium coefficient of relationship.
+  -r <float>, --relationship-coefficient <float>  Filter relatives by minimum coefficient of relationship.
 """
 
 var args: Table[string, Value]
@@ -77,39 +78,52 @@ for indiv in proband_strings:
       quit fmt"ERROR: {indiv} not in pedigree."
 
 # Find relatives by filtering method
-var subset: HashSet[Individual]
 if args["--degree"]:
     let degree = to_int(parse_float($args["--degree"]))
-    subset = relatives_by_degree(probands, degree)
-elif args["--relationship-coefficient"]:
+    individuals = individuals.intersection(relatives_by_degree(probands, degree))
+if args["--relationship-coefficient"]:
     let coefficient = parse_float($args["--relationship-coefficient"])
-    subset = filter_relatives(probands, coefficient)
-else:
-  subset = individuals
+    individuals = individuals.intersection(filter_relatives(probands, coefficient))
 
 # Optionally restrict to only ancestors or descendants (including proband(s))
 if args["--ancestors"]:
   var combined_ancestors: HashSet[Individual]
   for proband in probands:
     combined_ancestors.incl(proband.ancestors())
-  subset = subset.intersection(combined_ancestors)
+  individuals = individuals.intersection(combined_ancestors)
 if args["--descendants"]:
   var combined_descendants: HashSet[Individual]
   for proband in probands:
     combined_descendants.incl(proband.descendants())
-  subset = subset.intersection(combined_descendants)
+  individuals = individuals.intersection(combined_descendants)
+
+# Add back mates
+if args["--mates"]:
+  var mates: HashSet[Individual]
+  for individual in individuals:
+      try:
+        if individual.sire.get() in individuals:
+          mates.incl(individual.dam.get())
+      except UnpackDefect:
+        discard
+      try:
+        if individual.dam.get() in individuals:
+          mates.incl(individual.sire.get())
+      except UnpackDefect:
+        discard
+  individuals = individuals.union(mates)
 
 # Determine output type
 case $args["-O"]:
   of "l":
-    write_list(subset)
+    write_list(individuals)
   of "m":
-    write_matrix(subset)
+    write_matrix(individuals)
   of "p":
-    write_plink(subset)
+    write_plink(individuals)
   of "t":
-    write_tsv(subset)
+    write_tsv(individuals)
   of "w":
-    write_pairwise(subset)
+    write_pairwise(individuals)
   else:
-    write_tsv(subset)
+    write_tsv(individuals)
