@@ -183,7 +183,15 @@ proc write_tsv*(individuals: HashSet[Individual]) =
 
     # Remove if parents are missing and is already listed as a parent of another
     if sire_id == "" and dam_id == "":
-      discard
+      block singleton:
+        for individual in individuals:
+          if indiv.sire.isSome():
+            if individual.sire.get() == indiv:
+              break singleton
+          elif indiv.dam.isSome():
+            if individual.dam.get() == indiv:
+              break singleton
+        echo &"{indiv.id}\t\t"
     else:
       echo &"{indiv.id}\t{sire_id}\t{dam_id}"
       included_individuals.incl(indiv)

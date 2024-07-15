@@ -81,7 +81,7 @@ Any rows not starting with `#` are interpreted as individuals, so any header or 
 Probands are the individuals from whom relatives will be determined using the filtering methods. Only one of the following options for specifying probands can be used. Using one will also require either `-d <int>` or `-r <float>`.
 
 #### `-f`
-Without this flag, `ped` will return an error with one of the probands is not specified in the pedigree file.
+Without this flag, `ped` will return an error when one of the probands is not specified in the pedigree file.
 
 #### `-P <probands_file>`
 A file containing a list of probands, one per line.
@@ -129,7 +129,7 @@ Some example coefficients:
 While a cousin would have a coefficient of `0.125`, a double cousin (being a counsin on both parents' sides) would have the coefficient applied twice and thus be `0.25`.
 
 ### Output
-There are three output types, all passed to `STDOUT`. They are specified with the `-O` option as summarized below.
+There are five output types, all passed to `stdout`. They are specified with the `-O` option as summarized below.
 
 If not specified, the default is the TSV output, which is the same format as the input file.
 In this case, each line will be a duo or trio, unless the proband is the only relative.
