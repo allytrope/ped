@@ -185,12 +185,16 @@ proc write_tsv*(individuals: HashSet[Individual]) =
     if sire_id == "" and dam_id == "":
       block singleton:
         for individual in individuals:
-          if indiv.sire.isSome():
+          try:
             if individual.sire.get() == indiv:
               break singleton
-          elif indiv.dam.isSome():
+          except UnpackDefect:
+            discard
+          try:
             if individual.dam.get() == indiv:
               break singleton
+          except UnpackDefect:
+            discard
         echo &"{indiv.id}\t\t"
     else:
       echo &"{indiv.id}\t{sire_id}\t{dam_id}"
