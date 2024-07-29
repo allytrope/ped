@@ -1,6 +1,6 @@
 import
   docopt,
-  std/[hashes, options, sets, strformat, strutils, tables, terminal],
+  std/[enumerate, hashes, options, sets, strformat, strutils, tables, terminal],
   io, relatives
 
 
@@ -19,6 +19,7 @@ Options:
                                                   a.k.a, the shortest-path distance.
   -f, --force-probands                            No error if proband is missing from pedigree.
   -m, --mates                                     Include mates.
+  -n, --intersection                              Find intersection of filterings on each proband (as opposed to the union).
   -O <format>                                     Can be "l" for list, "m" for matrix, "p" for PLINK-style TSV,
                                                   "t" for 3-columned TSV, or "w" for pairwise.
   -P <file>, --probands-file <file>               File containing one proband per line.
@@ -77,25 +78,53 @@ for indiv in proband_strings:
     else:
       quit fmt"ERROR: {indiv} not in pedigree."
 
+# Determine whether to take union or intersection of probands' relatives
+var set_operation = union[Individual]
+if args["--intersection"]:
+  set_operation = intersection[Individual]
+
+### Subsetting generalizations
+proc subset_kin(kin: proc) =
+  #[Find either union or intersection of relatives using a specific filtering method.]#
+  var combined_kin: HashSet[Individual]
+  for idx, proband in enumerate(probands):
+    if idx == 0:
+      combined_kin.incl(proband.kin())
+    else:
+      combined_kin = combined_kin.set_operation(proband.kin())
+  individuals = individuals.intersection(combined_kin)
+proc subset_kin(kin: proc, coefficient: float) =
+  #[Find either union or intersection of relatives using a specific filtering method.]#
+  var combined_kin: HashSet[Individual]
+  for idx, proband in enumerate(probands):
+    if idx == 0:
+      combined_kin.incl(kin(proband, coefficient))
+    else:
+      combined_kin = combined_kin.set_operation(kin(proband, coefficient))
+  individuals = individuals.intersection(combined_kin)
+proc subset_kin(kin: proc, coefficient: int) =
+  #[Find either union or intersection of relatives using a specific filtering method.]#
+  var combined_kin: HashSet[Individual]
+  for idx, proband in enumerate(probands):
+    if idx == 0:
+      combined_kin.incl(kin(proband, coefficient))
+    else:
+      combined_kin = combined_kin.set_operation(kin(proband, coefficient))
+  individuals = individuals.intersection(combined_kin)
+
 # Find relatives by filtering method
 if args["--degree"]:
-    let degree = to_int(parse_float($args["--degree"]))
-    individuals = individuals.intersection(relatives_by_degree(probands, degree))
+  let degree = to_int(parse_float($args["--degree"]))
+  subset_kin(relatives_by_degree, degree)
 if args["--relationship-coefficient"]:
-    let coefficient = parse_float($args["--relationship-coefficient"])
-    individuals = individuals.intersection(filter_relatives(probands, coefficient))
+  let coefficient = parse_float($args["--relationship-coefficient"])
+  subset_kin(filter_relatives, coefficient)
 
-# Optionally restrict to only ancestors or descendants (including proband(s))
+# Restrict to only ancestors or descendants (including proband(s))
 if args["--ancestors"]:
-  var combined_ancestors: HashSet[Individual]
-  for proband in probands:
-    combined_ancestors.incl(proband.ancestors())
-  individuals = individuals.intersection(combined_ancestors)
+  subset_kin(ancestors)
 if args["--descendants"]:
-  var combined_descendants: HashSet[Individual]
-  for proband in probands:
-    combined_descendants.incl(proband.descendants())
-  individuals = individuals.intersection(combined_descendants)
+  subset_kin(descendants)
 
 # Add back mates
 if args["--mates"]:

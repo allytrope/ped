@@ -70,7 +70,7 @@ proc descendants*(proband: Individual): HashSet[Individual] =
   
 
 # Find descendants
-proc relatives_by_degree*(probands: seq[Individual], degree: int): HashSet[Individual] =
+proc relatives_by_degree*(proband: Individual, degree: int): HashSet[Individual] =
   #[Find all relatives within a specified degree of relationship.
   
   Finds relatives with a shortest path less than or equal to `degree` in graph G,
@@ -114,8 +114,7 @@ proc relatives_by_degree*(probands: seq[Individual], degree: int): HashSet[Indiv
         depth_first_search(child, degree - 1)
   
   # Begin iterations
-  for proband in probands:
-    depth_first_search(proband, degree)
+  depth_first_search(proband, degree)
 
   return relatives
 
@@ -177,14 +176,13 @@ proc relatives_by_relationship*(proband: Individual, min_coefficient: float): Or
 
   return coefficients
 
-proc filter_relatives*(probands: seq[Individual], min_coefficient: float): HashSet[Individual] =
+proc filter_relatives*(proband: Individual, min_coefficient: float): HashSet[Individual] =
     #[Filter to only relatives at or above the minimum coefficient.]#
     var relatives: HashSet[Individual]
-    for proband in probands:
-      let coefficients = relatives_by_relationship(proband, min_coefficient)
-      for indiv, coefficient in coefficients:
-        if coefficient >= min_coefficient:
-          relatives.incl(indiv)
+    let coefficients = relatives_by_relationship(proband, min_coefficient)
+    for indiv, coefficient in coefficients:
+      if coefficient >= min_coefficient:
+        relatives.incl(indiv)
     return relatives
 
 proc find_coefficients*(proband: Individual): OrderedTable[Individual, float] =

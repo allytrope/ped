@@ -86,24 +86,6 @@ proc write_list*(individuals: HashSet[Individual]) =
   for indiv in sequence:
     echo indiv.id
 
-# proc write_matrix*(individuals: HashSet[Individual]) =
-#   #[Write a matrix of relationship coefficients.]#
-#   let sequence = individuals.toSeq().sorted(cmp=cmpIndividuals)
-
-#   type
-#     Cell = object
-#       indiv1: Individual
-#       indiv2: Individual
-#       val: float
-
-#   var cells: seq[Cell]
-#   #var matrix: seq[individuals.len(), seq[individuals.len(), float]]
-
-#   for individual in individuals:
-
-
-
-
 proc write_plink*(individuals: HashSet[Individual]) =
   #[Write individuals to PLINK-style TSV.
   
@@ -181,7 +163,7 @@ proc write_tsv*(individuals: HashSet[Individual]) =
     else:
       dam_id = ""
 
-    # Remove if parents are missing and is already listed as a parent of another
+    # When parents are missing and is already listed as a parent of another, don't include
     if sire_id == "" and dam_id == "":
       block singleton:
         for individual in individuals:

@@ -9,7 +9,7 @@
 ### Input Options
 | Arg | Description |
 | --- | --- |
-| `STDIN` or positional arg | TSV with columns: child, sire, and dam. |
+| `stdin` or positional arg | TSV with columns: child, sire, and dam. |
 
 
 ### Proband Options
@@ -26,6 +26,7 @@
 | `-b` | `--descendants` | Descendants only + self. |
 | `-d <int>` | `--degree <int>` | Maximum degree of relationship. |
 | `-m` | `--mates` | Keep mates. |
+| `-n` | `--intersection` | Takes the intersection of relatives from all probands. |
 | `-r <float>` | `--relationship-coefficient <float>` | Minimum coefficient of relationship. |
 
 ### Output Options
@@ -34,7 +35,7 @@
 | `-Ol` | list | One individual per line. |
 | `-Om` | matrix | Coefficients of relationship as a matrix. |
 | `-Op` | PLINK | Plink-style `.ped`. |
-| `-Ot` | TSV | Child, sire, and dam with tab-delimited columns. |
+| `-Ot` | TSV | Child, sire, and dam with tab-delimited columns. (default) |
 | `-Ow` | pairwise | Coefficients of relationship as a pairwise TSV. |
 
 
@@ -45,6 +46,9 @@ ped pedigree.tsv -p 111 -d 4
 
 # Specify multiple probands as a comma-delimited string
 ped pedigree.tsv -p 111,222,333 -d 4
+
+# Find all ancestors that are shared between individuals "111" and "222".
+ped pedigree.tsv -p 111,222 -an
 
 # Change trios file to PLINK-style file
 ped pedigree.tsv -Op
@@ -90,7 +94,7 @@ Does not need to be seekable, and so can also take a file through process substi
 
 #### `-p <probands>`
 A comma-delimited string of probands like so `-p 111,222,333`.
-`-p` is incomplatible with `-P`.
+`-p` is incompatible with `-P`.
 
 ### Filtering
 Filtering options explain how to filter down a individuals in relation to proband(s). Thus using any of these require either `-P <probands_file>` or `-p <probands>`.
@@ -113,6 +117,11 @@ Some example values:
 #### `-m`
 This flag will include mates of individuals in the subset that might have otherwise been filtered out. This step occurs after all other filtering.
 This option is useful for when using output to generate a plot.
+
+#### `-n`
+When this flag is included, filtering will take the intersection of relatives for each proband. Without this flag, it is instead the union that is taken.
+
+For example, `ped pedigree.tsv -p 111,222 -an ` will find all ancestors that are shared between individuals 111 and 222.
 
 #### `-r <float>`
 This option keeps only relatives with a coefficient of relationship greater than or equal to the specified float. While `-d <int>` keeps only the shorest path to determine degree, `-r <float>` sums the coefficients of all paths.
