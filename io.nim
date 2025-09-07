@@ -14,31 +14,26 @@ proc read_file(file: File, fields: openArray[string], empty: string): HashSet[In
     id_idx: int
     sire_idx: int
     dam_idx: int
-    sex_idx: Option[int]
+    sex_idx: int
 
   # Find fields for each variable in input file. Otherwise, assign the empty value.
   #for value in ["id", ]
 
-  try:
-    id_idx = fields.find("id")
-  except KeyError:
+  id_idx = fields.find("id")
+  if id_idx == -1:
     raise newException(MissingFieldError, "The 'id' field is required.")
-  try:
-    sire_idx = fields.find("sire")
-  except KeyError:
+  sire_idx = fields.find("sire")
+  if sire_idx == -1:
     raise newException(MissingFieldError, "The 'sire' field is required.")
-  try:
-    dam_idx = fields.find("dam")
-  except KeyError:
+  dam_idx = fields.find("dam")
+  if dam_idx == -1:
     raise newException(MissingFieldError, "The 'dam' field is required.")
-  try:
-    let sex_idx = some(fields.find("sex"))
-  except KeyError:
-    let sex_idx = none(int)
+  sex_idx = fields.find("sex")
+
   # try:
-  #   let aff_idx = fields.find("aff")
+  #   aff_idx = fields.find("aff")
   # except KeyError:
-  #   let aff_idx = nil
+  #   aff_idx = nil
 
   for line in lines(file):
     if line.startsWith("#"):
@@ -49,11 +44,11 @@ proc read_file(file: File, fields: openArray[string], empty: string): HashSet[In
       sire = split[sire_idx]
       dam = split[dam_idx]
     var sex: Sex
-    # Unpack sex
-    if sex_idx.isSome():
-      if split[sex_idx.get()] in ["male", "Male", "1"]:
+    # Assign sex
+    if sex_idx != -1:
+      if split[sex_idx] in ["male", "Male", "1"]:
         sex = male
-      elif split[sex_idx.get()] in ["female", "Female", "2"]:
+      elif split[sex_idx] in ["female", "Female", "2"]:
         sex = female
       else:
         sex = unknown
@@ -125,8 +120,8 @@ proc read_file(file: File, fields: openArray[string], empty: string): HashSet[In
       individuals[child].sire = sire_obj
       individuals[child].dam = dam_obj
     # Check for inconsistency with sex
-      if individuals[child].sex != unknown and individuals[child].sex != sex:
-        raise newException(InconsistentSexError, fmt"Individual {child.id} appears as both male and female.")
+      # if (individuals[child].sex != unknown) and (individuals[child].sex != sex):
+      #   raise newException(InconsistentSexError, fmt"Individual {child.id} appears as both male and female.")
     # Else add new record
     else:
       individuals.incl(child)
