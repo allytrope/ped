@@ -2,21 +2,67 @@ import
   std/[algorithm, options, sequtils, sets, strformat, strutils, sugar, tables],
   relatives
 
-proc read_tsv*(file: File): HashSet[Individual] =
-  #[Read from 3-columned TSV, where the columns are in the order child, sire, and dam.]#
-  var individuals: HashSet[Individual]
+
+type
+  MissingFieldError = object of CatchableError  # Is "catchable" the correct term?
+  InconsistentSexError = object of ValueError
+
+proc read_file(file: File, fields: openArray[string], empty: string): HashSet[Individual] =
+  #[Generalized text file reader for reading pedigree data.]#
+  var
+    individuals: HashSet[Individual]
+    id_idx: int
+    sire_idx: int
+    dam_idx: int
+    sex_idx: Option[int]
+
+  # Find fields for each variable in input file. Otherwise, assign the empty value.
+  #for value in ["id", ]
+
+  try:
+    id_idx = fields.find("id")
+  except KeyError:
+    raise newException(MissingFieldError, "The 'id' field is required.")
+  try:
+    sire_idx = fields.find("sire")
+  except KeyError:
+    raise newException(MissingFieldError, "The 'sire' field is required.")
+  try:
+    dam_idx = fields.find("dam")
+  except KeyError:
+    raise newException(MissingFieldError, "The 'dam' field is required.")
+  try:
+    let sex_idx = some(fields.find("sex"))
+  except KeyError:
+    let sex_idx = none(int)
+  # try:
+  #   let aff_idx = fields.find("aff")
+  # except KeyError:
+  #   let aff_idx = nil
 
   for line in lines(file):
     if line.startsWith("#"):
       continue
-    let split = line.split("\t")
-    let id = split[0]
-    let sire = split[1]
-    let dam = split[2]
+    let
+      split = line.split("\t")    
+      id = split[id_idx]
+      sire = split[sire_idx]
+      dam = split[dam_idx]
+    var sex: Sex
+    # Unpack sex
+    if sex_idx.isSome():
+      if split[sex_idx.get()] in ["male", "Male", "1"]:
+        sex = male
+      elif split[sex_idx.get()] in ["female", "Female", "2"]:
+        sex = female
+      else:
+        sex = unknown
+    else:
+      sex = unknown
 
     # Create object for sire
     var sire_obj: Option[Individual]
-    if sire == "":
+    if sire == empty:
       sire_obj = none(Individual)
     else:
       sire_obj = some(Individual(
@@ -28,15 +74,21 @@ proc read_tsv*(file: File): HashSet[Individual] =
         ))
 
       if individuals.contains(sire_obj.get()):
-        # Update sex if already in HashSet
-        individuals[sire_obj.get()].sex = male
+        # Update sex if already in HashSet or error if inconsistent
+        case individuals[sire_obj.get()].sex:
+          of unknown:
+            individuals[sire_obj.get()].sex = male
+          of female:
+            raise newException(InconsistentSexError, fmt"Individual {individuals[sire_obj.get()].id} appears as both male and female.")
+          else:
+            discard
         sire_obj = some(individuals[sire_obj.get()])
       else:
         individuals.incl(sire_obj.get())
 
     # Create object for dam
     var dam_obj: Option[Individual]
-    if dam == "":
+    if dam == empty:
       dam_obj = none(Individual)
     else:
       dam_obj = some(Individual(
@@ -48,8 +100,14 @@ proc read_tsv*(file: File): HashSet[Individual] =
         ))
 
       if individuals.contains(dam_obj.get()):
-        # Update sex if already in HashSet
-        individuals[dam_obj.get()].sex = female
+        # Update sex if already in HashSet or error if inconsistent
+        case individuals[dam_obj.get()].sex:
+          of unknown:
+            individuals[dam_obj.get()].sex = female
+          of male:
+            raise newException(InconsistentSexError, fmt"Individual {individuals[dam_obj.get()].id} appears as both male and female.")
+          else:
+            discard
         dam_obj = some(individuals[dam_obj.get()])
       else:
         individuals.incl(dam_obj.get())
@@ -60,12 +118,15 @@ proc read_tsv*(file: File): HashSet[Individual] =
         sire: sire_obj,
         dam: dam_obj,
         children: initHashSet[Individual](),
-        sex: unknown
+        sex: sex
     )
     # Update existing record
     if child in individuals:
       individuals[child].sire = sire_obj
       individuals[child].dam = dam_obj
+    # Check for inconsistency with sex
+      if individuals[child].sex != unknown and individuals[child].sex != sex:
+        raise newException(InconsistentSexError, fmt"Individual {child.id} appears as both male and female.")
     # Else add new record
     else:
       individuals.incl(child)
@@ -78,6 +139,14 @@ proc read_tsv*(file: File): HashSet[Individual] =
       individuals[individual.dam.get()].children.incl(individual)
 
   return individuals
+
+proc read_tsv*(file: File): HashSet[Individual] =
+  #[Read a 3-column TSV of trios.]#
+  return read_file(file = file, fields = @["id", "sire", "dam"], empty = "")
+
+proc read_plink*(file: File): HashSet[Individual] =
+  #[Read a PLINK-style TSV.]#
+  return read_file(file = file, fields = @["fam", "id", "sire", "dam", "sex", "aff"], empty = "0")
 
 proc write_list*(individuals: HashSet[Individual]) =
   #[Write individuals, one individual per line.]#

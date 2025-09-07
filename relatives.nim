@@ -1,6 +1,6 @@
 #[Procedures related to the subcommand `relatives`.]#
 
-import std/[hashes, options, sets, strformat, tables]
+import std/[hashes, options, sets, strformat, sugar, tables]
 
 type
   Sex* = enum
@@ -18,7 +18,8 @@ type
 func hash(individual: Individual): Hash =
   hash(individual.id)
 func hash(edge: Edge): Hash =
-  hash(edge.child) + hash(edge.parent)
+  #hash(edge.child) - hash(edge.parent)
+  hash([edge.child, edge.parent])
 
 # Equivalence functions
 func `==`(indiv1: Individual, indiv2: Individual): bool =
@@ -30,40 +31,92 @@ proc cmpIndividuals*(a, b: Individual): int =
 proc echo*(indiv: Individual) =
   echo fmt"id: {indiv.id}"
 
+func mates*(proband: Individual): HashSet[Individual] =
+  # Return mates
+  for child in proband.children:
+    if proband.sex == male:
+      try:
+        result.incl(child.dam.get())
+      except UnpackDefect:
+        discard
+    elif proband.sex == female:
+      try:
+        result.incl(child.sire.get())
+      except UnpackDefect:
+        discard
+
+func offspring*(proband: Individual, mate: Individual): HashSet[Individual] =
+  ## Offspring that share both individuals as parents
+  for child in proband.children:
+    if proband.sex == male:
+      try:
+        if child.dam.get() == mate:
+          result.incl(child)
+      except UnpackDefect:
+        discard
+    elif proband.sex == female:
+      try:
+        if child.sire.get() == mate:
+          result.incl(child)
+      except UnpackDefect:
+        discard
+
 func parents(proband: Individual): HashSet[Individual] =
   #[Return sire and dam of proband.]#
-  var parents: HashSet[Individual]
-  if proband.sire.isSome():
-      parents.incl(proband.sire.get())
-  if proband.dam.isSome():
-      parents.incl(proband.dam.get())
-  return parents
+  try:
+    result.incl(proband.sire.get())
+  except UnpackDefect:
+    discard
+  try:
+    result.incl(proband.dam.get())
+  except UnpackDefect:
+    discard
+
+# proc founders*(proband: Individual): HashSet[Individual] =
+#   #[Find all founders. That is, all ancestors who lack at least one known parent.]#
+#   var individuals = [proband].toHashSet()
+
+#   proc recursive_founders(proband: Individual): HashSet[Individual] =
+#     if proband.sire.isSome():
+#       discard recursive_founders(proband.sire.get())
+#     else:
+#       individuals.incl(proband)
+#     if proband.dam.isSome():
+#       discard recursive_founders(proband.sire.get())
+#     else:
+#       individuals.incl(proband)
+
+#   discard recursive_founders(proband)
+#   return individuals
 
 proc ancestors*(proband: Individual): HashSet[Individual] =
   #[Find all ancestors including self.]#
   var individuals = [proband].toHashSet()
-  #var individuals: HashSet[Individual]
 
   proc recursive_ancestors(proband: Individual): HashSet[Individual] =
-    if proband.sire.isSome():
+    try:
       individuals.incl(proband.sire.get())
       discard recursive_ancestors(proband.sire.get())
-    if proband.dam.isSome():
+    except UnpackDefect:
+      discard
+    try:
       individuals.incl(proband.dam.get())
       discard recursive_ancestors(proband.dam.get())
-  
+    except UnpackDefect:
+      discard
+
   discard recursive_ancestors(proband)
   return individuals
 
 proc descendants*(proband: Individual): HashSet[Individual] =
   #[Find all descendants including self.]#
   var individuals = [proband].toHashSet()
-  #var individuals: HashSet[Individual]
+
   proc recursive_descendants(proband: Individual): HashSet[Individual] =
     for child in proband.children:
       individuals.incl(child)
       discard recursive_descendants(child)
-  
+
   discard recursive_descendants(proband)
   return individuals
 
