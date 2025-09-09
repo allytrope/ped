@@ -6,11 +6,14 @@
 
 ## Overview of Options
 
-### Input Options
-| Arg | Description |
-| --- | --- |
-| `stdin` or positional arg | TSV with columns: child, sire, and dam. |
+### Input
+Pass pedigree file as `stdin` or positional arg.
 
+### Input Options
+| Option + arg | Output Type | Description |
+| --- | --- | --- |
+| `-It` | TSV |  Child, sire, and dam with tab-delimited columns. (default) |
+| `-Ip` | PLINK | Plink-style `.ped`. |
 
 ### Proband Options
 | Option + arg | Long-form | Description |
@@ -26,7 +29,7 @@
 | `-b` | `--descendants` | Descendants only + self. |
 | `-d <int>` | `--degree <int>` | Maximum degree of relationship. |
 | `-m` | `--mates` | Keep mates. |
-| `-n` | `--intersection` | Takes the intersection of relatives from all probands. |
+| `-n` | `--intersection` | Take the intersection of relatives from all probands. |
 | `-r <float>` | `--relationship-coefficient <float>` | Minimum coefficient of relationship. |
 
 ### Output Options
@@ -72,14 +75,32 @@ ped pedigree.tsv -Ol | grep -Fvxf <(ped pedigree.tsv -p 111 -d 4 -Ol)
 bcftools view input.bcf -S <(ped pedigree.tsv -p 111 -d 4 -Ol) --force-samples
 
 # Find all ancestors of 333 who are also descendants of 111 (including probands themselves)
-comm -12 <(./ped pedigree.tsv -p 333 -a -Ol) <(./ped pedigree.tsv -p 111 -b -Ol)
+comm -12 <(ped pedigree.tsv -p 333 -a -Ol) <(ped pedigree.tsv -p 111 -b -Ol)
 ```
 
 ## Options in Detail
 
 ### Input pedigree
-The input pedigree file should be a tab-delimited file, consisting of three columns in the order: child, sire, and dam. Can be specified as a positional argument or through `stdin`.
+The input pedigree file should be in one of the formats described below. It can be specified as a positional argument or through `stdin`.
 Any rows not starting with `#` are interpreted as individuals, so any header or column names should start with `#` or be excluded.
+In determining the format, `ped` goes through a series of checks until the format is identified:
+1) Checks if `-I <format>` was specified
+2) Checks for valid suffix in file name (only if appears as positional argument)
+3) Assumes `-It`
+
+#### `-It`
+Interprets input as a 3-column TSV with columns in the order child, sire, and dam.
+
+Equivalent to the output type `-Ot`.
+
+#### `-Ip`
+Interprets input as a PLINK-style .ped.
+This has the columns family, individual, sire, dam, sex, and phenotype.
+Additional columns after the phenotype column are also acceptable.
+However, currently, only the individual, sire, dam, and sex are read. That is, columns 2 through 5.
+Males are encoded as `1`, females as `2`, and unknown sex as `0`. Additionally, all unknown fields must be `0`.
+
+Equivalent to the output type `-Op`.
 
 ### Probands
 Probands are the individuals from whom relatives will be determined using the filtering methods. Only one of the following options for specifying probands can be used. Using one will also require either `-d <int>` or `-r <float>`.

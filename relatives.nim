@@ -1,6 +1,6 @@
 #[Procedures related to the subcommand `relatives`.]#
 
-import std/[hashes, options, sets, strformat, sugar, tables]
+import std/[hashes, options, sets, strformat, tables]
 
 type
   Sex* = enum

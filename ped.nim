@@ -14,10 +14,11 @@ Usage:
 Options:
   -h, --help                                      Show this screen.
   -a, --ancestors                                 Keep only probands and ancestors (not compatible with -b).
-  -b, --descendants                               Keep only probands and descendents (not compatible with -a).         
+  -b, --descendants                               Keep only probands and descendents (not compatible with -a).
   -d <int>, --degree <int>                        Filter relatives by number of minimum (parent-child) connections away,
                                                   a.k.a, the shortest-path distance.
   -f, --force-probands                            No error if proband is missing from pedigree.
+  -I <format>                                     Input format; can "p" for PLINK-style TSV or by default a 3-columned TSV
   -m, --mates                                     Include mates.
   -n, --intersection                              Find intersection of filterings on each proband (as opposed to the union).
   -O <format>                                     Can be "l" for list, "m" for matrix, "p" for PLINK-style TSV,
@@ -41,20 +42,43 @@ if args["--probands"] and args["--probands-file"]:
 if args["--force-probands"] and not (args["--probands"] or args["--probands-file"]):
   raise newException(Exception, "`-f` requires either `-p` or `-P`.")
 
-# Read input file
-var individuals: HashSet[Individual]
-if args["<file>"]:
-  # This IOError is being raised unnecessarily during process substitution
-  # # Verify that there is no stdin
-  # if not isatty(stdin):
-  #   raise newException(IOError, "Can't pass pedigree file through both positional argument and stdin.")
-  let f = open($args["<file>"], fmRead)
+# Find and read input file
+var
+  individuals: HashSet[Individual]
+  filename: string
+  f: File
+block read:
+  if args["<file>"]:
+    filename = $args["<file>"]
+    f = open(filename, fmRead)
+  elif not isatty(stdin):
+    f = stdin
+  else:
+    raise newException(IOError, "Must pass pedigree file as either positional argument or through stdin.")
   defer: close(f)
-  individuals = read_tsv(f)
-elif not isatty(stdin):
-  individuals = read_tsv(stdin)
-else:
-  raise newException(IOError, "Must pass pedigree file as either positional argument or through stdin.")
+  # First check if `-I` is specified
+  if args["-I"]:
+    case $args["-I"]:
+      of "p":
+        individuals = read_plink(f)
+      of "t":
+        individuals = read_tsv(f)
+      else:
+        individuals = read_tsv(f)
+  # Second check file suffix
+  elif args["<file>"]:
+    case filename.split(".")[^1]:
+      of "fam":
+        individuals = read_plink(f)
+      of "ped":
+        individuals = read_plink(f)
+      of "tsv":
+        individuals = read_tsv(f)
+      else:
+        individuals = read_tsv(f)
+  # Otherwise, assume 3-column TSV
+  else:
+    individuals = read_tsv(f)
 
 # Get probands as strings
 var proband_strings: seq[string]
@@ -76,7 +100,8 @@ for indiv in proband_strings:
     if args["--force-probands"]:
       continue
     else:
-      quit fmt"ERROR: {indiv} not in pedigree."
+      #quit fmt"ERROR: {indiv} not in pedigree."
+      raise newException(Exception, fmt"ERROR: {indiv} not in pedigree.")
 
 # Determine whether to take union or intersection of probands' relatives
 var set_operation = union[Individual]
