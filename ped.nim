@@ -59,6 +59,8 @@ block read:
   # First check if `-I` is specified
   if args["-I"]:
     case $args["-I"]:
+      of "h":
+        individuals = read_headered(f)
       of "p":
         individuals = read_plink(f)
       of "t":
@@ -72,13 +74,13 @@ block read:
         individuals = read_plink(f)
       of "ped":
         individuals = read_plink(f)
-      of "tsv":
+      of "trios":
         individuals = read_tsv(f)
       else:
-        individuals = read_tsv(f)
-  # Otherwise, assume 3-column TSV
+        individuals = read_headered(f)
+  # Otherwise, assume headered TSV
   else:
-    individuals = read_tsv(f)
+    individuals = read_headered(f)
 
 # Get probands as strings
 var proband_strings: seq[string]

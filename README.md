@@ -1,7 +1,7 @@
 `ped` is a command line tool for filtering pedigree files and converting between pedigree file types.
 
 
-`ped` takes a pedigree file as a TSV with columns in the order of child, sire, and dam. This can be passed as the first positional argument or through stdin. `ped` then can use a combination of proband(s) and filtering options centered around those proband(s) to pull out a subset of individuals. Lastly, `ped` outputs to a variety of formats.
+`ped` takes a pedigree file as the first positional argument or through `stdin`. `ped` then can use a combination of proband(s) and filtering options centered around those proband(s) to pull out a subset of individuals. Lastly, `ped` outputs to a variety of formats.
 
 
 ## Overview of Options
@@ -10,9 +10,10 @@
 Pass pedigree file as `stdin` or positional arg.
 
 ### Input Options
-| Option + arg | Output Type | Description |
+| Option + arg | Input Type | Description |
 | --- | --- | --- |
-| `-It` | TSV |  Child, sire, and dam with tab-delimited columns. (default) |
+| (default) | headered TSV | Mandatory fields: child, sire, and dam. Optional: sex. |
+| `-It` | trios/duos |  Child, sire, and dam with tab-delimited columns. (default) |
 | `-Ip` | PLINK | Plink-style `.ped`. |
 
 ### Proband Options
@@ -38,7 +39,7 @@ Pass pedigree file as `stdin` or positional arg.
 | `-Ol` | list | One individual per line. |
 | `-Om` | matrix | Coefficients of relationship as a matrix. |
 | `-Op` | PLINK | Plink-style `.ped`. |
-| `-Ot` | TSV | Child, sire, and dam with tab-delimited columns. (default) |
+| `-Ot` | trios/duos | Child, sire, and dam with tab-delimited columns. (default) |
 | `-Ow` | pairwise | Coefficients of relationship as a pairwise TSV. |
 
 
@@ -53,7 +54,7 @@ ped pedigree.tsv -p 111,222,333 -d 4
 # Find all ancestors that are shared between individuals "111" and "222".
 ped pedigree.tsv -p 111,222 -an
 
-# Change trios file to PLINK-style file
+# Convert to PLINK-style file
 ped pedigree.tsv -Op
 ```
 
@@ -71,7 +72,7 @@ ped pedigree.tsv -p 111 -d 4 -Ol | wc -l
 # Find individuals that are not closely related to proband (including proband)
 ped pedigree.tsv -Ol | grep -Fvxf <(ped pedigree.tsv -p 111 -d 4 -Ol)
 
-# Extract only related samples from BCF file
+# Extract only samples related to proband from BCF file
 bcftools view input.bcf -S <(ped pedigree.tsv -p 111 -d 4 -Ol) --force-samples
 
 # Find all ancestors of 333 who are also descendants of 111 (including probands themselves)
@@ -82,31 +83,24 @@ comm -12 <(ped pedigree.tsv -p 333 -a -Ol) <(ped pedigree.tsv -p 111 -b -Ol)
 
 ### Input pedigree
 The input pedigree file should be in one of the formats described below. It can be specified as a positional argument or through `stdin`.
-Any rows not starting with `#` are interpreted as individuals, so any header or column names should start with `#` or be excluded.
-In determining the format, `ped` goes through a series of checks until the format is identified:
-1) Checks if `-I <format>` was specified
-2) Checks for valid suffix in file name (only if appears as positional argument)
-3) Assumes `-It`
+
+By default, `ped` attempts to parse the header of TSV file. The file must have an "id", "sire", and "dam" field. "sex" is also optional. Several alternative column names are also allowed. For example, "Sire", "sire", and "Father" all work to identify the same column. Other fields are not read. And any rows starting with `#` are skipped.
+
+Otherwise, the `-I <format>` can be used to specify two other file types. Furthermore, if a file ends in `.ped` or `.fam`, it is assumed to be in a PLINK-style format. Though this won't work if passed through `stdin`, in which case, `-Ip` will need to be specified.
 
 #### `-It`
-Interprets input as a 3-column TSV with columns in the order child, sire, and dam.
-
-Equivalent to the output type `-Ot`.
+Interprets input as a 3-columned headerless TSV of trios and duos with columns in the order child, sire, and dam. Equivalent to the output type `-Ot`.
 
 #### `-Ip`
-Interprets input as a PLINK-style .ped.
-This has the columns family, individual, sire, dam, sex, and phenotype.
-Additional columns after the phenotype column are also acceptable.
-However, currently, only the individual, sire, dam, and sex are read. That is, columns 2 through 5.
-Males are encoded as `1`, females as `2`, and unknown sex as `0`. Additionally, all unknown fields must be `0`.
+Interprets input as a PLINK-style `.ped`/`.fam`. This has the columns family, individual, sire, dam, sex, and phenotype/ Additional columns after the phenotype column are also acceptable. However, currently, only the individual, sire, dam, and sex are read. That is, columns 2 through 5.
 
-Equivalent to the output type `-Op`.
+Males are encoded as `1`, females as `2`, and unknown sex as `0`. Additionally, all unknown fields must be `0`. Equivalent to the output type `-Op`.
 
 ### Probands
 Probands are the individuals from whom relatives will be determined using the filtering methods. Only one of the following options for specifying probands can be used. Using one will also require either `-d <int>` or `-r <float>`.
 
 #### `-f`
-Without this flag, `ped` will return an error when one of the probands is not specified in the pedigree file.
+Without this flag, `ped` will return an error when one of the probands specified with `-p <probands>` or `-P <probands_file>` is not in the pedigree file.
 
 #### `-P <probands_file>`
 A file containing a list of probands, one per line.
@@ -161,7 +155,7 @@ While a cousin would have a coefficient of `0.125`, a double cousin (being a cou
 ### Output
 There are five output types, all passed to `stdout`. They are specified with the `-O` option as summarized below.
 
-If not specified, the default is the TSV output, which is the same format as the input file.
+If not specified, the default is the trios/duos output, `-Ot`.
 In this case, each line will be a duo or trio, unless the proband is the only relative.
 
 #### `-Om`
@@ -195,4 +189,4 @@ Then run:
 nim c --define:release ped.nim
 ```
 
-`ped` has been tested on Nim v1.6.16.
+`ped` has been tested on Nim v2.2.

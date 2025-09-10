@@ -1,60 +1,88 @@
 import
-  std/[algorithm, options, sequtils, sets, strformat, strutils, sugar, tables],
+  std/[algorithm, enumerate, options, sequtils, sets, strformat, strutils, sugar, tables],
   relatives
 
 
 type
-  MissingFieldError = object of CatchableError  # Is "catchable" the correct term?
+  MissingFieldError = object of CatchableError  # TODO: Is "catchable" the correct term?
   InconsistentSexError = object of ValueError
 
-proc read_file(file: File, fields: openArray[string], empty: string): HashSet[Individual] =
+proc read_file(file: File, fields: openArray[string], empty: string, header: bool): HashSet[Individual] =
   #[Generalized text file reader for reading pedigree data.]#
   var
     individuals: HashSet[Individual]
-    id_idx: int
-    sire_idx: int
-    dam_idx: int
-    sex_idx: int
+    column2index: Table[string, int]
 
-  # Find fields for each variable in input file. Otherwise, assign the empty value.
-  #for value in ["id", ]
-
-  id_idx = fields.find("id")
-  if id_idx == -1:
-    raise newException(MissingFieldError, "The 'id' field is required.")
-  sire_idx = fields.find("sire")
-  if sire_idx == -1:
-    raise newException(MissingFieldError, "The 'sire' field is required.")
-  dam_idx = fields.find("dam")
-  if dam_idx == -1:
-    raise newException(MissingFieldError, "The 'dam' field is required.")
-  sex_idx = fields.find("sex")
-
-  # try:
-  #   aff_idx = fields.find("aff")
-  # except KeyError:
-  #   aff_idx = nil
-
+  # Parse fields argument if not empty
+  if fields.len() > 0:
+    # Search for mandatory fields
+    for field in ["id", "sire", "dam"]:
+      column2index[field] = fields.find(field)
+      if column2index[field] == -1:
+        raise newException(MissingFieldError, fmt"The '{field}' field is required.")
+    # Search for optional fields
+    for field in ["sex"]:
+      if fields.find(field) != -1:
+        column2index[field] = fields.find(field)
+  # Parse header (if present)
+  elif header == true:
+    # Lowercase conversions
+    let header_key = {
+      "id": "id",
+      "indiv": "id",
+      "individual": "id",      
+      "proband": "id",
+      "child": "id",
+      "offspring": "id",
+      "sire": "sire",
+      "father": "sire",
+      "pat": "sire",
+      "paternal": "sire",
+      "dam": "dam",
+      "mother": "dam",
+      "mat": "dam",
+      "maternal": "dam",
+      "sex": "sex",
+    }.toTable
+    # Map headers to fields
+    for idx, column_name in enumerate(file.readLine().split("\t")):
+      try:
+        column2index[header_key[column_name.toLower()]] = idx
+      except:
+        continue
+    # Verify that mandatory fields are present
+    for field in ["id", "sire", "dam"]:
+      try:
+        discard column2index[field]
+      except KeyError:
+        raise newException(MissingFieldError, fmt"The '{field}' field is required.")
+  
+  # Read the rest of the file
   for line in lines(file):
     if line.startsWith("#"):
       continue
     let
       split = line.split("\t")    
-      id = split[id_idx]
-      sire = split[sire_idx]
-      dam = split[dam_idx]
+      id = split[column2index["id"]]
+      sire = split[column2index["sire"]]
+      dam = split[column2index["dam"]]
     var sex: Sex
     # Assign sex
-    if sex_idx != -1:
-      if split[sex_idx] in ["male", "Male", "1"]:
+    if column2index.hasKey("sex"):
+      let input_sex = split[column2index["sex"]].toLower()
+      case input_sex:
+      of "male", "m", "1":
         sex = male
-      elif split[sex_idx] in ["female", "Female", "2"]:
+      of "female", "f", "2":
         sex = female
-      else:
+      of "unknown", "unk", "u", "0", "-9", "":
         sex = unknown
+      else:
+        raise newException(ValueError, &"The sex '{input_sex}' cannot be interpreted.")
     else:
       sex = unknown
 
+    # TODO: Condense creation of sire_obj and dam_obj to reduce code duplication
     # Create object for sire
     var sire_obj: Option[Individual]
     if sire == empty:
@@ -135,13 +163,17 @@ proc read_file(file: File, fields: openArray[string], empty: string): HashSet[In
 
   return individuals
 
+proc read_headered*(file: File): HashSet[Individual] =
+  #[Read a 3-column TSV of trios.]#
+  return read_file(file = file, fields = @[], empty = "", header=true)
+
 proc read_tsv*(file: File): HashSet[Individual] =
   #[Read a 3-column TSV of trios.]#
-  return read_file(file = file, fields = @["id", "sire", "dam"], empty = "")
+  return read_file(file = file, fields = @["id", "sire", "dam"], empty = "", header=false)
 
 proc read_plink*(file: File): HashSet[Individual] =
   #[Read a PLINK-style TSV.]#
-  return read_file(file = file, fields = @["fam", "id", "sire", "dam", "sex", "aff"], empty = "0")
+  return read_file(file = file, fields = @["fam", "id", "sire", "dam", "sex", "aff"], empty = "0", header=false)
 
 proc write_list*(individuals: HashSet[Individual]) =
   #[Write individuals, one individual per line.]#
@@ -157,7 +189,6 @@ proc write_plink*(individuals: HashSet[Individual]) =
   Family and affected status, however, are constant.]#
 
   let sequence = individuals.toSeq().sorted(cmp=cmpIndividuals)
-  var included_individuals: HashSet[Individual]
 
   # Set all animals to same family with unknown affected status
   let
@@ -178,11 +209,9 @@ proc write_plink*(individuals: HashSet[Individual]) =
     if indiv.sire.isSome():
       if indiv.sire.get() in sequence:
         sire_id = indiv.sire.get().id
-        included_individuals.incl(indiv.sire.get())
     if indiv.dam.isSome():
       if indiv.dam.get() in sequence:
         dam_id = indiv.dam.get().id
-        included_individuals.incl(indiv.dam.get())
     case indiv.sex:
       of male:
         sex = "1"
@@ -192,7 +221,6 @@ proc write_plink*(individuals: HashSet[Individual]) =
         sex = "0"
 
     echo &"{family}\t{indiv.id}\t{sire_id}\t{dam_id}\t{sex}\t{affected}"
-    included_individuals.incl(indiv)
 
 proc write_tsv*(individuals: HashSet[Individual]) =
   #[Write individuals to TSV.]#
@@ -204,7 +232,6 @@ proc write_tsv*(individuals: HashSet[Individual]) =
     return
 
   let sequence = individuals.toSeq().sorted(cmp=cmpIndividuals)
-  var included_individuals: HashSet[Individual]
 
   for indiv in sequence:
     var 
@@ -215,7 +242,6 @@ proc write_tsv*(individuals: HashSet[Individual]) =
         sire_id = ""
       else:
         sire_id = indiv.sire.get().id
-        included_individuals.incl(indiv.sire.get())
     else:
       sire_id = ""
     if indiv.dam.isSome():
@@ -223,7 +249,6 @@ proc write_tsv*(individuals: HashSet[Individual]) =
         dam_id = ""
       else:
         dam_id = indiv.dam.get().id
-        included_individuals.incl(indiv.dam.get())
     else:
       dam_id = ""
 
@@ -244,7 +269,6 @@ proc write_tsv*(individuals: HashSet[Individual]) =
         echo &"{indiv.id}\t\t"
     else:
       echo &"{indiv.id}\t{sire_id}\t{dam_id}"
-      included_individuals.incl(indiv)
 
 proc write_matrix*(individuals: HashSet[Individual]) =
   #[Write relationship coefficients as a matrix.]#
