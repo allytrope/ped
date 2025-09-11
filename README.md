@@ -168,9 +168,8 @@ The simplest output; just one individual per row.
 #### `-Op`
 A PLINK-styled TSV will have one row for each individual.
 Each row will have five columns: family, child, sire, dam, sex, and affected.
-If input is a three-columned TSV (like the result of `-Ot`), this will make up a family id of "1" and affected status as `0`.
-Missing entries are filled with `0`.
-The sex field uses `1` for males and `2` for females.
+The family id will be assigned "1" and affected status as `0`. The sex field uses `1` for males and `2` for females.
+Any missing entries are also filled with `0`.
 
 #### `-Ot`
 Lists duos and trios as a TSV. Also condenses rows so that if an individual has no recorded parent, but is the parent of another, it will not have its own row. This means that there will usually be fewer rows than total individuals.

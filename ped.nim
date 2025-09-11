@@ -18,7 +18,8 @@ Options:
   -d <int>, --degree <int>                        Filter relatives by number of minimum (parent-child) connections away,
                                                   a.k.a, the shortest-path distance.
   -f, --force-probands                            No error if proband is missing from pedigree.
-  -I <format>                                     Input format; can "p" for PLINK-style TSV or by default a 3-columned TSV
+  -I <format>                                     Input format; can "p" for PLINK-style TSV, "t" for trios/duos file,
+                                                  or headered file by default.
   -m, --mates                                     Include mates.
   -n, --intersection                              Find intersection of filterings on each proband (as opposed to the union).
   -O <format>                                     Can be "l" for list, "m" for matrix, "p" for PLINK-style TSV,
@@ -64,9 +65,9 @@ block read:
       of "p":
         individuals = read_plink(f)
       of "t":
-        individuals = read_tsv(f)
+        individuals = read_trios(f)
       else:
-        individuals = read_tsv(f)
+        individuals = read_trios(f)
   # Second check file suffix
   elif args["<file>"]:
     case filename.split(".")[^1]:
@@ -75,7 +76,7 @@ block read:
       of "ped":
         individuals = read_plink(f)
       of "trios":
-        individuals = read_tsv(f)
+        individuals = read_trios(f)
       else:
         individuals = read_headered(f)
   # Otherwise, assume headered TSV
@@ -102,7 +103,6 @@ for indiv in proband_strings:
     if args["--force-probands"]:
       continue
     else:
-      #quit fmt"ERROR: {indiv} not in pedigree."
       raise newException(Exception, fmt"ERROR: {indiv} not in pedigree.")
 
 # Determine whether to take union or intersection of probands' relatives
@@ -178,8 +178,8 @@ case $args["-O"]:
   of "p":
     write_plink(individuals)
   of "t":
-    write_tsv(individuals)
+    write_trios(individuals)
   of "w":
     write_pairwise(individuals)
   else:
-    write_tsv(individuals)
+    write_trios(individuals)

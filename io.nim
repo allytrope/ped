@@ -10,8 +10,9 @@ type
 proc read_file(file: File, fields: openArray[string], empty: string, header: bool): HashSet[Individual] =
   #[Generalized text file reader for reading pedigree data.]#
   var
-    individuals: HashSet[Individual]
     column2index: Table[string, int]
+    individuals: HashSet[Individual]
+    parent_objs: array[2, Option[Individual]]
 
   # Parse fields argument if not empty
   if fields.len() > 0:
@@ -45,11 +46,17 @@ proc read_file(file: File, fields: openArray[string], empty: string, header: boo
       "sex": "sex",
     }.toTable
     # Map headers to fields
-    for idx, column_name in enumerate(file.readLine().split("\t")):
-      try:
-        column2index[header_key[column_name.toLower()]] = idx
-      except:
+    # Skip comments prior to header
+    for line in lines(file):
+      if line.startsWith("#"):
         continue
+      else:
+        for idx, column_name in enumerate(line.split("\t")):
+          try:
+            column2index[header_key[column_name.toLower()]] = idx
+          except:
+            continue
+        break
     # Verify that mandatory fields are present
     for field in ["id", "sire", "dam"]:
       try:
@@ -59,6 +66,7 @@ proc read_file(file: File, fields: openArray[string], empty: string, header: boo
   
   # Read the rest of the file
   for line in lines(file):
+    # Skip any other commented lines
     if line.startsWith("#"):
       continue
     let
@@ -82,71 +90,44 @@ proc read_file(file: File, fields: openArray[string], empty: string, header: boo
     else:
       sex = unknown
 
-    # TODO: Condense creation of sire_obj and dam_obj to reduce code duplication
-    # Create object for sire
-    var sire_obj: Option[Individual]
-    if sire == empty:
-      sire_obj = none(Individual)
-    else:
-      sire_obj = some(Individual(
-          id: sire,
-          sire: none(Individual),
-          dam: none(Individual),
-          children: initHashSet[Individual](),
-          sex: male
-        ))
-
-      if individuals.contains(sire_obj.get()):
-        # Update sex if already in HashSet or error if inconsistent
-        case individuals[sire_obj.get()].sex:
-          of unknown:
-            individuals[sire_obj.get()].sex = male
-          of female:
-            raise newException(InconsistentSexError, fmt"Individual {individuals[sire_obj.get()].id} appears as both male and female.")
-          else:
-            discard
-        sire_obj = some(individuals[sire_obj.get()])
+    # Create parental objects
+    for (idx, parent, parent_sex) in [(0, sire, male), (1, dam, female)]:
+      var parent_obj: Option[Individual]
+      if parent == empty:
+        parent_obj = none(Individual)
       else:
-        individuals.incl(sire_obj.get())
+        parent_obj = some(Individual(
+            id: parent,
+            sire: none(Individual),
+            dam: none(Individual),
+            children: initHashSet[Individual](),
+            sex: parent_sex
+          ))
 
-    # Create object for dam
-    var dam_obj: Option[Individual]
-    if dam == empty:
-      dam_obj = none(Individual)
-    else:
-      dam_obj = some(Individual(
-          id: dam,
-          sire: none(Individual),
-          dam: none(Individual),
-          children: initHashSet[Individual](),
-          sex: female
-        ))
-
-      if individuals.contains(dam_obj.get()):
-        # Update sex if already in HashSet or error if inconsistent
-        case individuals[dam_obj.get()].sex:
-          of unknown:
-            individuals[dam_obj.get()].sex = female
-          of male:
-            raise newException(InconsistentSexError, fmt"Individual {individuals[dam_obj.get()].id} appears as both male and female.")
+        if individuals.contains(parent_obj.get()):
+          # Update sex if already in HashSet or error if inconsistent
+          if individuals[parent_obj.get()].sex == unknown:
+            individuals[parent_obj.get()].sex = parent_sex
           else:
-            discard
-        dam_obj = some(individuals[dam_obj.get()])
-      else:
-        individuals.incl(dam_obj.get())
+            if individuals[parent_obj.get()].sex != parent_sex:
+              raise newException(InconsistentSexError, fmt"Individual {individuals[parent_obj.get()].id} appears as both male and female.")
+          parent_obj = some(individuals[parent_obj.get()])
+        else:
+          individuals.incl(parent_obj.get())
+      parent_objs[idx] = parent_obj
 
     # Create object for child
     let child = Individual(
         id: id,
-        sire: sire_obj,
-        dam: dam_obj,
+        sire: parent_objs[0],
+        dam: parent_objs[1],
         children: initHashSet[Individual](),
         sex: sex
     )
     # Update existing record
     if child in individuals:
-      individuals[child].sire = sire_obj
-      individuals[child].dam = dam_obj
+      individuals[child].sire = parent_objs[0]
+      individuals[child].dam = parent_objs[1]
     # Check for inconsistency with sex
       # if (individuals[child].sex != unknown) and (individuals[child].sex != sex):
       #   raise newException(InconsistentSexError, fmt"Individual {child.id} appears as both male and female.")
@@ -167,7 +148,7 @@ proc read_headered*(file: File): HashSet[Individual] =
   #[Read a 3-column TSV of trios.]#
   return read_file(file = file, fields = @[], empty = "", header=true)
 
-proc read_tsv*(file: File): HashSet[Individual] =
+proc read_trios*(file: File): HashSet[Individual] =
   #[Read a 3-column TSV of trios.]#
   return read_file(file = file, fields = @["id", "sire", "dam"], empty = "", header=false)
 
@@ -213,16 +194,16 @@ proc write_plink*(individuals: HashSet[Individual]) =
       if indiv.dam.get() in sequence:
         dam_id = indiv.dam.get().id
     case indiv.sex:
-      of male:
-        sex = "1"
-      of female:
-        sex = "2"
-      else:
-        sex = "0"
+    of male:
+      sex = "1"
+    of female:
+      sex = "2"
+    else:
+      sex = "0"
 
     echo &"{family}\t{indiv.id}\t{sire_id}\t{dam_id}\t{sex}\t{affected}"
 
-proc write_tsv*(individuals: HashSet[Individual]) =
+proc write_trios*(individuals: HashSet[Individual]) =
   #[Write individuals to TSV.]#
 
   # Print only proband if it is the only relative.
