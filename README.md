@@ -97,7 +97,7 @@ Interprets input as a PLINK-style `.ped`/`.fam`. This has the columns family, in
 Males are encoded as `1`, females as `2`, and unknown sex as `0`. Additionally, all unknown fields must be `0`. Equivalent to the output type `-Op`.
 
 ### Probands
-Probands are the individuals from whom relatives will be determined using the filtering methods. Only one of the following options for specifying probands can be used. Using one will also require either `-d <int>` or `-r <float>`.
+Probands are the individuals from whom relatives will be determined using the filtering methods. As `-P` and `-p` specify the same information, only one can be used. Using one will also require either `-d <int>` or `-r <float>` to subset individuals accordingly.
 
 #### `-f`
 Without this flag, `ped` will return an error when one of the probands specified with `-p <probands>` or `-P <probands_file>` is not in the pedigree file.
@@ -168,8 +168,8 @@ The simplest output; just one individual per row.
 #### `-Op`
 A PLINK-styled TSV will have one row for each individual.
 Each row will have five columns: family, child, sire, dam, sex, and affected.
-The family id will be assigned "1" and affected status as `0`. The sex field uses `1` for males and `2` for females.
-Any missing entries are also filled with `0`.
+The family id will be assigned "1" and affected status as "0". The sex field uses "1" for males and "2" for females.
+Any missing entries are also filled with "0".
 
 #### `-Ot`
 Lists duos and trios as a TSV. Also condenses rows so that if an individual has no recorded parent, but is the parent of another, it will not have its own row. This means that there will usually be fewer rows than total individuals.
@@ -182,7 +182,7 @@ Includes rows for comparing individuals to themselves (which will always be 1.0)
 ## Installation
 The binary can be downloaded from the [release page](https://github.com/allytrope/ped/releases). No dependencies are required this way. 
 
-Otherwise to compile, first download Nim and `nimble install docopt`. 
+Otherwise to compile, first download Nim and run `nimble install docopt`. 
 Then run:
 ```
 nim c --define:release ped.nim

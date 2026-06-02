@@ -120,16 +120,7 @@ proc subset_kin(kin: proc) =
     else:
       combined_kin = combined_kin.set_operation(proband.kin())
   individuals = individuals.intersection(combined_kin)
-proc subset_kin(kin: proc, coefficient: float) =
-  #[Find either union or intersection of relatives using a specific filtering method.]#
-  var combined_kin: HashSet[Individual]
-  for idx, proband in enumerate(probands):
-    if idx == 0:
-      combined_kin.incl(kin(proband, coefficient))
-    else:
-      combined_kin = combined_kin.set_operation(kin(proband, coefficient))
-  individuals = individuals.intersection(combined_kin)
-proc subset_kin(kin: proc, coefficient: int) =
+proc subset_kin[T: SomeNumber](kin: proc, coefficient: T) =
   #[Find either union or intersection of relatives using a specific filtering method.]#
   var combined_kin: HashSet[Individual]
   for idx, proband in enumerate(probands):
@@ -168,6 +159,9 @@ if args["--mates"]:
       except UnpackDefect:
         discard
   individuals = individuals.union(mates)
+
+# TODO: add back full-siblings
+# if args["--full-siblings"]:
 
 # Determine output type
 case $args["-O"]:

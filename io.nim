@@ -28,7 +28,7 @@ proc read_file(file: File, fields: openArray[string], empty: string, header: boo
   # Parse header (if present)
   elif header == true:
     # Lowercase conversions
-    let header_key = {
+    const header_key = {
       "id": "id",
       "indiv": "id",
       "individual": "id",      
@@ -45,14 +45,14 @@ proc read_file(file: File, fields: openArray[string], empty: string, header: boo
       "maternal": "dam",
       "sex": "sex",
     }.toTable
-    # Map headers to fields
-    # Skip comments prior to header
     for line in lines(file):
+      # Skip comments prior to header
       if line.startsWith("#"):
         continue
       else:
         for idx, column_name in enumerate(line.split("\t")):
           try:
+            # Map headers to fields
             column2index[header_key[column_name.toLower()]] = idx
           except:
             continue
@@ -169,10 +169,9 @@ proc write_plink*(individuals: HashSet[Individual]) =
   Has five columns: family, child, sire, dam, sex, and affected status.
   Family and affected status, however, are constant.]#
 
-  let sequence = individuals.toSeq().sorted(cmp=cmpIndividuals)
-
-  # Set all animals to same family with unknown affected status
   let
+    sequence = individuals.toSeq().sorted(cmp=cmpIndividuals)
+    # Set all animals to same family with unknown affected status
     family = "1"
     affected = "0"
 
@@ -233,7 +232,7 @@ proc write_trios*(individuals: HashSet[Individual]) =
     else:
       dam_id = ""
 
-    # When parents are missing and is already listed as a parent of another, don't include
+    # When parents are missing and are already listed as a parent of another, don't include
     if sire_id == "" and dam_id == "":
       block singleton:
         for individual in individuals:
