@@ -7,6 +7,8 @@ type
   MissingFieldError = object of CatchableError  # TODO: Is "catchable" the correct term?
   InconsistentSexError = object of ValueError
 
+## Reading procedures
+
 proc read_file(file: File, fields: openArray[string], empty: string, header: bool): HashSet[Individual] =
   #[Generalized text file reader for reading pedigree data.]#
   var
@@ -146,15 +148,27 @@ proc read_file(file: File, fields: openArray[string], empty: string, header: boo
 
 proc read_headered*(file: File): HashSet[Individual] =
   #[Read a 3-column TSV of trios.]#
-  return read_file(file = file, fields = @[], empty = "", header=true)
+  return read_file(file = file, fields = @[], empty = "", header = true)
 
 proc read_trios*(file: File): HashSet[Individual] =
   #[Read a 3-column TSV of trios.]#
-  return read_file(file = file, fields = @["id", "sire", "dam"], empty = "", header=false)
+  return read_file(file = file, fields = @["id", "sire", "dam"], empty = "", header = false)
 
 proc read_plink*(file: File): HashSet[Individual] =
   #[Read a PLINK-style TSV.]#
-  return read_file(file = file, fields = @["fam", "id", "sire", "dam", "sex", "aff"], empty = "0", header=false)
+  return read_file(file = file, fields = @["fam", "id", "sire", "dam", "sex", "aff"], empty = "0", header = false)
+
+## Helper procedures
+proc makeCounter(start: int = 0): proc(): int =
+  var count = start - 1
+  return proc(): int =
+    inc count
+    return count
+
+# Create counter
+let nextInt = makeCounter()
+
+## Writing procedures
 
 proc write_list*(individuals: HashSet[Individual]) =
   #[Write individuals, one individual per line.]#
@@ -163,7 +177,7 @@ proc write_list*(individuals: HashSet[Individual]) =
   for indiv in sequence:
     echo indiv.id
 
-proc write_plink*(individuals: HashSet[Individual]) =
+proc write_plink*(individuals: HashSet[Individual], fill_missing: bool = false, probands: seq[Individual] = @[]) =
   #[Write individuals to PLINK-style TSV.
   
   Has five columns: family, child, sire, dam, sex, and affected status.
@@ -173,12 +187,12 @@ proc write_plink*(individuals: HashSet[Individual]) =
     sequence = individuals.toSeq().sorted(cmp=cmpIndividuals)
     # Set all animals to same family with unknown affected status
     family = "1"
-    affected = "0"
 
   var
     sire_id: string
     dam_id: string
     sex: string
+    affected: string
 
   for indiv in sequence:
     # Set parents and sex as missing initially
@@ -186,12 +200,21 @@ proc write_plink*(individuals: HashSet[Individual]) =
     dam_id = "0"
     sex = "0"
 
-    if indiv.sire.isSome():
-      if indiv.sire.get() in sequence:
-        sire_id = indiv.sire.get().id
-    if indiv.dam.isSome():
-      if indiv.dam.get() in sequence:
-        dam_id = indiv.dam.get().id
+    # Get sire name
+    # if indiv.sire.isSome() and indiv.sire.get() in sequence:
+    if indiv.sire.isSome() and ((indiv.sire.get() in sequence) or fill_missing):
+      sire_id = indiv.sire.get().id
+    elif fill_missing:
+      sire_id = "?" & $nextInt()
+
+    # Get dam name
+    # if indiv.dam.isSome() and if indiv.dam.get() in sequence:
+    if indiv.dam.isSome() and ((indiv.dam.get() in sequence) or fill_missing):
+      dam_id = indiv.dam.get().id
+    elif fill_missing:
+      dam_id = "?" & $nextInt()
+    
+    # Get sex
     case indiv.sex:
     of male:
       sex = "1"
@@ -200,9 +223,15 @@ proc write_plink*(individuals: HashSet[Individual]) =
     else:
       sex = "0"
 
+    # Set probands to affected
+    if probands.contains(indiv):
+      affected = "2"
+    else:
+      affected = "1"
+
     echo &"{family}\t{indiv.id}\t{sire_id}\t{dam_id}\t{sex}\t{affected}"
 
-proc write_trios*(individuals: HashSet[Individual]) =
+proc write_trios*(individuals: HashSet[Individual], fill_missing: bool = false) =
   #[Write individuals to TSV.]#
 
   # Print only proband if it is the only relative.
@@ -215,22 +244,20 @@ proc write_trios*(individuals: HashSet[Individual]) =
 
   for indiv in sequence:
     var 
-      sire_id: string
-      dam_id: string
-    if indiv.sire.isSome():
-      if indiv.sire.get() notin sequence:
-        sire_id = ""
-      else:
-        sire_id = indiv.sire.get().id
-    else:
       sire_id = ""
-    if indiv.dam.isSome():
-      if indiv.dam.get() notin sequence:
-        dam_id = ""
-      else:
-        dam_id = indiv.dam.get().id
-    else:
       dam_id = ""
+
+    # Get sire name
+    if indiv.sire.isSome() and ((indiv.sire.get() in sequence) or fill_missing):
+      sire_id = indiv.sire.get().id
+    elif fill_missing:
+      sire_id = "?" & $nextInt()
+
+    # Get dam name
+    if indiv.dam.isSome() and ((indiv.dam.get() in sequence) or fill_missing):
+      dam_id = indiv.dam.get().id
+    elif fill_missing:
+      dam_id = "?" & $nextInt()
 
     # When parents are missing and are already listed as a parent of another, don't include
     if sire_id == "" and dam_id == "":
@@ -282,4 +309,4 @@ proc write_pairwise*(individuals: HashSet[Individual]) =
       except KeyError:
         # Report value as 0
         echo &"{indiv.id}\t{indiv2.id}\t0"
-        
+    

@@ -18,6 +18,7 @@ Options:
   -d <int>, --degree <int>                        Filter relatives by number of minimum (parent-child) connections away,
                                                   a.k.a, the shortest-path distance.
   -f, --force-probands                            No error if proband is missing from pedigree.
+  --fill-missing                                  Fill in missing parents with pseudo-names.
   -I <format>                                     Input format; can "p" for PLINK-style TSV, "t" for trios/duos file,
                                                   or headered file by default.
   -m, --mates                                     Include mates.
@@ -163,6 +164,10 @@ if args["--mates"]:
 # TODO: add back full-siblings
 # if args["--full-siblings"]:
 
+var fill_missing = false
+if args["--fill-missing"]:
+  fill_missing = true
+
 # Determine output type
 case $args["-O"]:
   of "l":
@@ -170,10 +175,10 @@ case $args["-O"]:
   of "m":
     write_matrix(individuals)
   of "p":
-    write_plink(individuals)
+    write_plink(individuals, fill_missing = fill_missing, probands = probands)
   of "t":
-    write_trios(individuals)
+    write_trios(individuals, fill_missing = fill_missing)
   of "w":
     write_pairwise(individuals)
   else:
-    write_trios(individuals)
+    write_trios(individuals, fill_missing = fill_missing)

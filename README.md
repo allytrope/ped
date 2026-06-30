@@ -33,7 +33,7 @@ Pass pedigree file as `stdin` or positional arg.
 | `-n` | `--intersection` | Take the intersection of relatives from all probands. |
 | `-r <float>` | `--relationship-coefficient <float>` | Minimum coefficient of relationship. |
 
-### Output Options
+### Output Formats
 | Option + arg | Output Type | Description |
 | --- | --- | --- |
 | `-Ol` | list | One individual per line. |
@@ -42,6 +42,10 @@ Pass pedigree file as `stdin` or positional arg.
 | `-Ot` | trios/duos | Child, sire, and dam with tab-delimited columns. (default) |
 | `-Ow` | pairwise | Coefficients of relationship as a pairwise TSV. |
 
+### Other Output Options
+| Option | Description |
+| --- | --- |
+| `--fill-missing` | Add placeholder names for missing individuals. |
 
 ## Examples
 ```
@@ -167,9 +171,11 @@ The simplest output; just one individual per row.
 
 #### `-Op`
 A PLINK-styled TSV will have one row for each individual.
-Each row will have five columns: family, child, sire, dam, sex, and affected.
-The family id will be assigned "1" and affected status as "0". The sex field uses "1" for males and "2" for females.
-Any missing entries are also filled with "0".
+There is a row for each filtered animal, which will have five fields: family, child, sire, dam, sex, and affected.
+The family id will be assigned "1".
+The sex field uses "1" for males and "2" for females.
+Any missing parents are also filled with "0", including known parents that were not a part of the subset, (unless `--fill-missing` is used).
+The affected status uses "2" when the individual was a specified proband and "1" if not. This makes viewing the probands easier when plotting with certain software (like QuickPed).
 
 #### `-Ot`
 Lists duos and trios as a TSV. Also condenses rows so that if an individual has no recorded parent, but is the parent of another, it will not have its own row. This means that there will usually be fewer rows than total individuals.
@@ -178,6 +184,16 @@ Fields with missing parents are left blank.
 #### `-Ow`
 Lists individuals pairwise with their corresponding coefficients of relationship.
 Includes rows for comparing individuals to themselves (which will always be 1.0).
+
+#### `--fill-missing`
+Adds placeholder names for missing individuals. The names begin with "?" followed by an incremental integer. If an individual's parent is known but had been removed during filtering, they will still be shown.
+This flag is useful when passing output to a tool that requires a name for every individual, but otherwise should be avoided as unknown parents between different offspring are not necessarily different parents.
+
+## Plotting
+Ideally, `ped` will include plotting the pedigree chart as one of its outputs. However, there are some existing ways to plot output with other tools.
+
+#### QuickPed
+QuickPed takes the PLINK format, so use `-Op`, and also requires that both parents be present, so use `--fill-missing` to create placeholder names.
 
 ## Installation
 The binary can be downloaded from the [release page](https://github.com/allytrope/ped/releases). No dependencies are required this way. 
