@@ -29,6 +29,7 @@ Pass pedigree file as `stdin` or positional arg.
 | `-a` | `--ancestors` | Ancestors only + self. |
 | `-b` | `--descendants` | Descendants only + self. |
 | `-d <int>` | `--degree <int>` | Maximum degree of relationship. |
+|  `-l <int>` | `--paths <int>` | Include up to specified number of paths between probands. (experimental) |
 | `-m` | `--mates` | Keep mates. |
 | `-n` | `--intersection` | Take the intersection of relatives from all probands. |
 | `-r <float>` | `--relationship-coefficient <float>` | Minimum coefficient of relationship. |

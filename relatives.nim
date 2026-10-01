@@ -240,3 +240,67 @@ proc filter_relatives*(proband: Individual, min_coefficient: float): HashSet[Ind
 
 proc find_coefficients*(proband: Individual): OrderedTable[Individual, float] =
   return relatives_by_relationship(proband, 0)
+
+proc blood_neighbors(indiv: Individual, allowed: HashSet[Individual]): seq[Individual] =
+  #[Return allowed parent/child neighbors for an individual.]#
+  var relatives: seq[Individual]
+  for parent in parents(indiv):
+    if parent in allowed:
+      relatives.add(parent)
+  for child in indiv.children:
+    if child in allowed:
+      relatives.add(child)
+  return relatives
+
+proc blood_relatives*(probands: seq[Individual]): HashSet[Individual] =
+  #[Return all individuals who are blood relatives of any proband, including the probands themselves.]#
+  var relatives = initHashSet[Individual]()
+  for proband in probands:
+    for indiv in ancestors(proband):
+      relatives.incl(indiv)
+    for indiv in descendants(proband):
+      relatives.incl(indiv)
+  return relatives
+
+proc parent_offspring_paths*(start, goal: Individual, allowed: HashSet[Individual], max_paths: int = 0): seq[seq[Individual]] =
+  #[Enumerate parent-offspring paths between two individuals, ordered by path length, optionally limiting the number of paths returned.]#
+  var
+    paths: seq[seq[Individual]]
+    queue = @[@[start]]
+    i = 0
+  while i < queue.len:
+    let path = queue[i]
+    i.inc
+    let last = path[^1]
+    if last == goal:
+      paths.add(path)
+      if max_paths > 0 and paths.len >= max_paths:
+        break
+      continue
+    for neighbor in blood_neighbors(last, allowed):
+      if neighbor notin path:
+        queue.add(path & @[neighbor])
+  return paths
+
+proc connecting_blood_relatives*(probands: seq[Individual], max_paths_per_pair: int = 0): HashSet[Individual] =
+  #[Find individuals forming parent-offspring paths connecting probands.
+    Only parent-child edges among blood relatives are traversed. When
+    `max_paths_per_pair` is positive, only the first N paths from shortest
+    to longest are kept for each pair of probands.]#
+  var connected = initHashSet[Individual]()
+  if probands.len == 0:
+    return connected
+
+  for proband in probands:
+    connected.incl(proband)
+
+  let allowed = blood_relatives(probands)
+  for i in 0 ..< probands.len:
+    for j in i + 1 ..< probands.len:
+      let start = probands[i]
+      let goal = probands[j]
+      let paths = parent_offspring_paths(start, goal, allowed, max_paths_per_pair)
+      for path in paths:
+        for indiv in path:
+          connected.incl(indiv)
+  return connected

@@ -21,6 +21,7 @@ Options:
   --fill-missing                                  Fill in missing parents with pseudo-names.
   -I <format>                                     Input format; can "p" for PLINK-style TSV, "t" for trios/duos file,
                                                   or headered file by default.
+  -l <int>, --paths <int>                         Include up to specified number of paths between probands. (experimental)
   -m, --mates                                     Include mates.
   -n, --intersection                              Find intersection of filterings on each proband (as opposed to the union).
   -O <format>                                     Can be "l" for list, "m" for matrix, "p" for PLINK-style TSV,
@@ -163,6 +164,10 @@ if args["--mates"]:
 
 # TODO: add back full-siblings
 # if args["--full-siblings"]:
+
+# Add connections between probands
+if args["--paths"]:
+  individuals = individuals.union(connecting_blood_relatives(probands, max_paths_per_pair = parseInt($args["--paths"])))
 
 var fill_missing = false
 if args["--fill-missing"]:
